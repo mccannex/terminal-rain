@@ -1,0 +1,18 @@
+# Build output (CMake, vendored SDL2 via FetchContent, Visual Studio project files)
+build/
+build-*/
+
+# Legacy pre-rewrite source, kept locally for reference only — not our code
+legacy/
+
+# Planning docs — local dev notes only, not part of the shipped project
+planning/
+
+# Claude Code local config
+.claude/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vs/
+*.user
