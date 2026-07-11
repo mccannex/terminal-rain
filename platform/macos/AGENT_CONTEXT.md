@@ -93,17 +93,29 @@ The real fix is a paid Apple Developer Program membership ($99/year): a
 `xcrun notarytool submit` + `xcrun stapler staple` as extra CI steps. **Not
 pursued** -- explicitly rejected in favor of a free workaround.
 
-What shipped instead: `scripts/macos/Install Glyph Rain.command`, packaged
-alongside the `.saver` bundle in the release zip by
-`.github/workflows/release.yml`'s macos job. It copies the bundle into
-`~/Library/Screen Savers` and runs `xattr -dr com.apple.quarantine` on the
-copy, which is the actual fix (Gatekeeper only objects to the quarantine
-flag on an ad-hoc-signed bundle, not the signature itself). The script will
-itself be quarantined after download, but as a plain shell script (not a
-signed Mach-O bundle) it gets Gatekeeper's *working* bypass path --
-right-click → Open once -- rather than the .saver's dead-end "damaged"
-message. Verified end-to-end locally: running the script installs a
-quarantine-free copy that Gatekeeper accepts.
+**First attempt (abandoned): `scripts/macos/Install Glyph Rain.command`.**
+Packaged alongside the `.saver` bundle in the release zip, it copied the
+bundle into `~/Library/Screen Savers` and ran `xattr -dr
+com.apple.quarantine` on the copy. Worked when tested by directly invoking
+the script locally, but the actual end-to-end flow (download the zip via
+browser, then double-click the script) failed: the script itself was also
+quarantined after download, and on this macOS version double-clicking (or
+even right-click → Open) a quarantined unsigned script shows the same hard
+"Apple could not verify ... is free of malware" block with no bypass
+button -- the older "right-click to open anyway" affordance most guidance
+online still describes no longer reliably applies. This just moved the
+Gatekeeper dead-end one level down rather than fixing it.
+
+**What actually shipped:** `.github/RELEASE_NOTES.md` gives a single `curl`
+command (`releases/latest/download/Glyph.Rain-macOS.zip`) that downloads,
+extracts, and installs the bundle in one line. `curl` never sets
+`com.apple.quarantine` in the first place -- only browsers do, as part of
+their own download-safety UI -- so this sidesteps Gatekeeper entirely rather
+than needing to bypass it after the fact. No script shipped in the release
+zip at all; `.github/workflows/release.yml`'s macos job packages just the
+bare `.saver` bundle again. Verified end-to-end live: running the documented
+`curl` command installs a copy with zero quarantine-related extended
+attributes, confirmed via `xattr -lr`.
 
 ## Verification gate (adapt from Windows/Linux)
 
@@ -234,7 +246,8 @@ above), and orphaned `legacyScreenSaver` host processes accumulating across
 activations (see above) -- neither affects the screensaver's actual
 functionality.
 
-Release packaging exists as of `v1.0.1`: the `.saver` bundle plus
-`Install Glyph Rain.command` in one zip via CI (see "Distribution" above) --
-no DMG, no notarization (deliberately not pursued), but no longer just
-"copy the built artifact into place by hand" either.
+Release packaging exists via CI (see "Distribution" above): as of `v1.0.3`,
+the documented install path is a single `curl` command that downloads and
+installs the plain `.saver` bundle, sidestepping Gatekeeper's browser-
+download quarantine entirely rather than needing to work around it. No DMG,
+no notarization (deliberately not pursued).
