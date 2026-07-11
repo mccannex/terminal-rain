@@ -11,6 +11,13 @@ struct StreamFieldConfig
     int spacePad = 30;      // range added to leading for the random erase point
     int speedDelay = 5;     // max ticks a stream can wait between row-advances
     Uint8 r = 150, g = 255, b = 125; // base head color
+
+    // Multiplies the glyph cell size so content stays a perceptually
+    // consistent physical size across displays of differing pixel density
+    // (e.g. a 2.06 scale on a high-density display matches the desktop
+    // environment's own per-output content scale). Not a matrix.cfg
+    // tunable -- callers set this from the environment, not the user.
+    float contentScale = 1.0f;
 };
 
 // Owns one independent falling-code simulation, sized to one surface
@@ -55,6 +62,8 @@ private:
     SDL_Texture* target_;
     int surfaceWidth_;
     int surfaceHeight_;
+    int glyphW_;
+    int glyphH_;
     int cols_;
     StreamFieldConfig config_;
     std::vector<Stream> streams_;
