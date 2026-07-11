@@ -1,0 +1,126 @@
+name: Release builds
+
+# Tag push (v*) publishes a GitHub Release with all three platform artifacts
+# attached. workflow_dispatch lets the matrix be run/inspected without
+# cutting a real tag first.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # SDL2 is fetched fresh via CMake FetchContent (see CMakeLists.txt) --
+      # cached by SDL2's pinned git tag + OS so repeat runs skip re-cloning
+      # and rebuilding it from scratch.
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-sdl2-deps-release-2.30.9
+
+      - name: Configure
+        run: cmake -S . -B build
+
+      - name: Build
+        run: cmake --build build --config Release --target glyph_rain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Glyph Rain-windows
+          path: build/Release/Glyph Rain.scr
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Package names per platform/linux/AGENT_CONTEXT.md's dnf list,
+      # translated to their apt equivalents (X11 *and* Wayland dev headers --
+      # that doc notes SDL2 has silently built with every video driver off
+      # before from a missing-headers gap).
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev libxss-dev libxkbcommon-dev \
+            libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libdrm-dev
+
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-sdl2-deps-release-2.30.9
+
+      - name: Configure
+        run: cmake -S . -B build
+
+      # No dedicated Linux packaging target exists yet (see
+      # platform/linux/AGENT_CONTEXT.md's "Build setup" section -- it's a
+      # documented, still-open loose end, not an oversight here): the real
+      # Fedora/KDE integration currently points powerdevil's launcher script
+      # straight at this same glyph_rain_dev binary. This artifact is that
+      # raw dev binary, not an installer -- named accordingly below so
+      # nobody mistakes it for a finished package.
+      - name: Build
+        run: cmake --build build --target glyph_rain_dev
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Glyph Rain-linux-dev-binary
+          path: build/glyph_rain_dev
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-sdl2-deps-release-2.30.9
+
+      - name: Configure
+        run: cmake -S . -B build
+
+      - name: Build
+        run: cmake --build build --target glyph_rain_saver
+
+      # macos-latest runners are Apple Silicon, so this is an arm64-only
+      # build -- no CMAKE_OSX_ARCHITECTURES universal-binary flag set, so an
+      # Intel Mac would not be able to run this artifact. Same ad-hoc
+      # codesign POST_BUILD step as local dev builds (see CMakeLists.txt);
+      # no Apple Developer identity or notarization involved here, so
+      # Gatekeeper will still warn on a machine other than the one that
+      # built it -- see platform/macos/AGENT_CONTEXT.md.
+      #
+      # ditto (not zip) preserves the .saver bundle's code signature and
+      # extended attributes correctly -- Apple's documented way to
+      # compress an app/plugin bundle for distribution.
+      - name: Package bundle
+        run: ditto -c -k --sequesterRsrc --keepParent "build/Glyph Rain.saver" "Glyph Rain-macOS.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Glyph Rain-macos
+          path: Glyph Rain-macOS.zip
+
+  release:
+    needs: [windows, linux, macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Glyph Rain-windows/**
+            Glyph Rain-linux-dev-binary/**
+            Glyph Rain-macos/**
