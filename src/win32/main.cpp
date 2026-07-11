@@ -68,20 +68,11 @@ namespace
     {
         if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
-        SDL_Window* window = SDL_CreateWindow(
-            "Glyph Rain",
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            1024, 768,
-            SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
-        if (!window)
-        {
-            SDL_Quit();
-            return 1;
-        }
+        // No per-display content-scale query on Windows yet (unlike Linux/KDE,
+        // see src/sdl_app/main.cpp) -- each display renders at contentScale
+        // 1.0 for now.
+        int result = runMultiDisplayStreamLoop(nullptr);
 
-        int result = runStreamLoop(window, false);
-
-        SDL_DestroyWindow(window);
         SDL_Quit();
         return result;
     }
