@@ -60,6 +60,16 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         srand(static_cast<unsigned int>(time(nullptr)));
+        // SDL_Init defaults to disabling the OS's idle/screensaver detection
+        // (an IOPMAssertion named "using SDL_DisableScreenSaver") -- meant
+        // to stop games from being interrupted by some *other* screensaver,
+        // but self-defeating here: this process IS the screensaver, so that
+        // default would block macOS from ever idle-triggering it in the
+        // first place. Confirmed live: a single legacyScreenSaver instance
+        // (even a brief one, e.g. for a thumbnail attempt) holding this
+        // assertion silently prevented "Show screensaver after 1 minute"
+        // from ever firing.
+        SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
         SDL_Init(SDL_INIT_VIDEO);
     });
 

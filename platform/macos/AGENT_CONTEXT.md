@@ -85,15 +85,73 @@ platforms' gates:
    "compiles").
 2. ⚠️ Grid tile thumbnail does not render — see "Known limitation: picker
    grid thumbnail" below. Not a bug in this bundle.
-3. ✅ Full-screen activation via System Settings' "Preview" shows the
-   animation, correctly sized, on-screen.
-4. ✅ Exits cleanly on real input — confirmed via mouse movement during a
-   live "Preview" run. Falls out for free from `legacyScreenSaver` owning
-   that lifecycle rather than us, as expected.
+3. ✅ Full-screen activation via System Settings' "Preview" *and* via a real
+   idle-trigger (System Settings → Screen Saver → "Show screensaver after" →
+   1 minute, left genuinely idle) both show the animation, correctly sized,
+   on-screen.
+4. ✅ Exits cleanly on real input — confirmed via mouse movement, both from
+   a live "Preview" run and from a real idle-triggered activation. Falls out
+   for free from `legacyScreenSaver` owning that lifecycle rather than us,
+   as expected.
 5. ✅ HiDPI/Retina sizing looks correct — confirmed on this machine's
    built-in Retina display (2560x1600). `SDL_CreateWindowFrom` on Cocoa gives
    the same automatic drawable-size scaling as a top-level window; no
    Linux-style manual `contentScale` handling was needed.
+6. ✅ Doesn't block its own idle-trigger — see "Fixed bug: SDL's default
+   screensaver-disable assertion" below. Was broken, now fixed and verified.
+
+## Fixed bug: SDL's default screensaver-disable assertion
+
+`SDL_Init(SDL_INIT_VIDEO)` defaults to disabling the OS's idle/screensaver
+detection (an `IOPMAssertionCreate` of type `PreventUserIdleDisplaySleep`,
+literally named `"... using SDL_DisableScreenSaver"` in `pmset -g
+assertions`) -- meant to stop games from being interrupted by some *other*
+screensaver kicking in mid-session. Self-defeating here: this process *is*
+the screensaver, so that default silently prevented macOS from ever
+idle-triggering it in the first place. Confirmed live: with "Show
+screensaver after" set to 1 minute, nothing happened, and `pmset -g
+assertions` showed a `legacyScreenSaver` process holding that exact
+assertion, `14:50:01` old -- far longer than the current session, meaning
+even a single leftover instance (e.g. from a Preview run, or a brief
+instantiation for a thumbnail attempt) keeps blocking every subsequent idle
+trigger for as long as that process happens to stick around.
+
+Fixed in `GlyphRainView.mm`'s `setUpIfNeeded`: `SDL_SetHint
+(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1")` before `SDL_Init`, so SDL never
+creates the assertion at all. Verified clean afterward via `pmset -g
+assertions` across both a real idle-triggered activation-then-dismiss cycle
+and a Preview activation-then-dismiss cycle -- no assertion left behind
+either way.
+
+## Known limitation: orphaned `legacyScreenSaver` host process
+
+Independent of the assertion bug above (already confirmed fixed): after a
+`GlyphRainView` instance's `-stopAnimation`/`teardown` correctly release all
+SDL resources (verified -- no assertion, no leaked memory from our object),
+the `legacyScreenSaver` *host process* itself doesn't always terminate. It
+was observed, after both a real idle-triggered run and a Preview run, still
+alive and reparented to `launchd` (PPID 1) -- i.e. its original spawning
+parent (`WallpaperAgent`/System Settings' Wallpaper extension) had already
+exited without first terminating this child.
+
+This matches what `log stream` showed earlier while diagnosing the
+thumbnail limitation: `runningboardd` explicitly logs this process as "not
+memory-managed" / "not lifecycle managed" / "will not be managed" --
+meaning macOS deliberately opts this process type out of its normal
+automatic-reaping behavior. That log line appeared regardless of which
+screensaver module was active (Apple's own "Random" module included), so
+this looks like inherent behavior of the `legacyScreenSaver.appex`
+compatibility shim on this macOS version, not something introduced by this
+bundle's code -- there's no host-process-exit hook exposed to
+`ScreenSaverView` subclasses to fix this from our side even if it were our
+bug.
+
+Practical effect: repeated activations (real or Preview) can accumulate
+harmless-but-wasteful orphaned `legacyScreenSaver` processes (small,
+idle, holding no assertions) until the user logs out/restarts, or manually
+`kill`s them. Not a resource leak *per activation loop* (each instance's
+own SDL/GL/atlas resources are released correctly), just a host-process
+cleanup gap outside this bundle's control.
 
 ## Known limitation: picker grid thumbnail
 
@@ -135,13 +193,16 @@ session, via `log stream` while opening the picker):
 
 ## Status
 
-**Fully verified working** on this real machine: builds and ad-hoc signs
-cleanly (`cmake --build build --target glyph_rain_saver`), installs into
-`~/Library/Screen Savers`, appears in System Settings' picker, animates
-correctly full-screen via "Preview" with correct Retina sizing, and exits
-cleanly on real input. The only open item is the picker grid thumbnail (see
-above), believed to be an OS-level limitation rather than something fixable
-here.
+**Fully verified working** on this real machine, including a real
+idle-trigger (not just Preview): builds and ad-hoc signs cleanly (`cmake
+--build build --target glyph_rain_saver`), installs into `~/Library/Screen
+Savers`, appears in System Settings' picker, animates correctly full-screen
+with correct Retina sizing, exits cleanly on real input, and no longer
+blocks its own idle-trigger (see "Fixed bug" above). Two open items, both
+OS-level and not fixable from this bundle: the picker grid thumbnail (see
+above), and orphaned `legacyScreenSaver` host processes accumulating across
+activations (see above) -- neither affects the screensaver's actual
+functionality.
 
 No dedicated packaging beyond the raw `.saver` bundle yet (no DMG/installer,
 no notarization) — matches Windows/Linux both still being "copy the built
