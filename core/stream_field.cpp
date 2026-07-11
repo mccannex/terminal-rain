@@ -1,5 +1,7 @@
 #include "stream_field.h"
 #include "glyph_atlas.h"
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 StreamField::StreamField(SDL_Renderer* renderer, SDL_Texture* glyphAtlas,
@@ -8,7 +10,9 @@ StreamField::StreamField(SDL_Renderer* renderer, SDL_Texture* glyphAtlas,
     , atlas_(glyphAtlas)
     , surfaceWidth_(surfaceWidth)
     , surfaceHeight_(surfaceHeight)
-    , cols_(surfaceWidth / kGlyphW)
+    , glyphW_(std::max(1, static_cast<int>(std::lround(kGlyphW * config.contentScale))))
+    , glyphH_(std::max(1, static_cast<int>(std::lround(kGlyphH * config.contentScale))))
+    , cols_(surfaceWidth / glyphW_)
     , config_(config)
     , streams_(config.maxStreams)
 {
@@ -49,7 +53,7 @@ void StreamField::spawnDespawn()
         }
     }
 
-    int despawnRow = surfaceHeight_ + config_.backTrace * kGlyphH;
+    int despawnRow = surfaceHeight_ + config_.backTrace * glyphH_;
     for (auto& s : streams_)
     {
         if (s.active && s.y > despawnRow)
@@ -69,7 +73,7 @@ void StreamField::updateMovement()
 
         if (s.speed == 0)
         {
-            s.y += kGlyphH;
+            s.y += glyphH_;
             s.speed = s.origSpeed;
         }
         else
@@ -85,7 +89,7 @@ void StreamField::drawGlyphCell(int px, int py, int glyphIndex, Uint8 r, Uint8 g
     // opaque-background TextOutW), then blit the color-keyed glyph on top.
     // Without the black-fill first, old bright pixels from a previous frame
     // would show through the gaps of the new glyph's shape.
-    SDL_Rect dst{ px, py, kGlyphW, kGlyphH };
+    SDL_Rect dst{ px, py, glyphW_, glyphH_ };
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &dst);
 
@@ -96,7 +100,7 @@ void StreamField::drawGlyphCell(int px, int py, int glyphIndex, Uint8 r, Uint8 g
 
 void StreamField::eraseCell(int px, int py)
 {
-    SDL_Rect dst{ px, py, kGlyphW, kGlyphH };
+    SDL_Rect dst{ px, py, glyphW_, glyphH_ };
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &dst);
 }
@@ -109,9 +113,9 @@ void StreamField::render()
     for (auto& s : streams_)
     {
         if (!s.active) continue;
-        if (s.y < 0 || s.y > surfaceHeight_ + config_.backTrace * kGlyphH) continue;
+        if (s.y < 0 || s.y > surfaceHeight_ + config_.backTrace * glyphH_) continue;
 
-        int px = s.col * kGlyphW;
+        int px = s.col * glyphW_;
 
         // Head: brightest, slower streams (higher origSpeed) are dimmer.
         int incR = config_.r / (config_.speedDelay + 1);
@@ -129,13 +133,13 @@ void StreamField::render()
         Uint8 dimR = static_cast<Uint8>(config_.r / 3 - s.origSpeed * dimIncR);
         Uint8 dimG = static_cast<Uint8>(config_.g / 3 - s.origSpeed * dimIncG);
         Uint8 dimB = static_cast<Uint8>(config_.b / 3 - s.origSpeed * dimIncB);
-        drawGlyphCell(px, s.y - kGlyphH, 1 + (rand() % (glyphAtlasGlyphCount() - 1)), dimR, dimG, dimB);
+        drawGlyphCell(px, s.y - glyphH_, 1 + (rand() % (glyphAtlasGlyphCount() - 1)), dimR, dimG, dimB);
 
         // Erase behind the head: one randomized point within the leading
         // window, and one fixed point at backTrace -- the guaranteed wipe.
         int randomErase = rand() % (config_.spacePad + 1) + config_.leading;
-        eraseCell(px, s.y - randomErase * kGlyphH);
-        eraseCell(px, s.y - config_.backTrace * kGlyphH);
+        eraseCell(px, s.y - randomErase * glyphH_);
+        eraseCell(px, s.y - config_.backTrace * glyphH_);
     }
 
     SDL_SetRenderTarget(renderer_, previousTarget);

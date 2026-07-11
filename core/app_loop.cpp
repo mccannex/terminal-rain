@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <ctime>
 
-int runStreamLoop(SDL_Window* window, bool isPreview)
+int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
 {
     static bool seeded = false;
     if (!seeded)
@@ -36,6 +36,7 @@ int runStreamLoop(SDL_Window* window, bool isPreview)
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     StreamFieldConfig config = loadConfig("matrix.cfg");
+    config.contentScale = contentScale;
     StreamField field(renderer, atlas, windowWidth, windowHeight, config);
 
     // A spurious mouse-motion event is commonly synthesized by the window

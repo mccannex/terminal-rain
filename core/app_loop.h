@@ -10,4 +10,10 @@
 // for Windows' /p preview-embedded window, which shouldn't disappear just
 // because the cursor happens to pass over its small thumbnail area -- its
 // lifetime is governed by the parent process instead).
-int runStreamLoop(SDL_Window* window, bool isPreview);
+//
+// contentScale: multiplies the glyph cell size so content stays a
+// perceptually consistent physical size across displays of differing
+// pixel density -- the caller is responsible for figuring out the right
+// value for the window's display (e.g. by querying the desktop
+// environment's per-output scale factor); this loop just applies it.
+int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale = 1.0f);
