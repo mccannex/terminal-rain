@@ -51,11 +51,13 @@ if(WIN32)
     # registration needed beyond the file existing. With SDL2 statically
     # linked and the glyph atlas embedded (core/glyph_atlas_data.h), this is
     # the entire deliverable -- no companion files needed alongside it.
-    # Named distinctly from the legacy build's "Matrix Screensaver.scr" so
-    # Windows' screensaver picker (which derives its displayed name from the
-    # filename when no version resource is embedded) can't confuse the two.
+    # Windows' screensaver picker derives its displayed name straight from
+    # the filename (no version resource is read), so the file is named
+    # "Glyph Rain.scr" -- with the space -- rather than the target's
+    # underscored build name, and distinctly from the legacy build's
+    # "Matrix Screensaver.scr" so the picker can't confuse the two.
     add_custom_command(TARGET glyph_rain POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:glyph_rain>
-            $<TARGET_FILE_DIR:glyph_rain>/glyph_rain.scr)
+            "$<TARGET_FILE_DIR:glyph_rain>/Glyph Rain.scr")
 endif()
