@@ -93,15 +93,24 @@ jobs:
       # build -- no CMAKE_OSX_ARCHITECTURES universal-binary flag set, so an
       # Intel Mac would not be able to run this artifact. Same ad-hoc
       # codesign POST_BUILD step as local dev builds (see CMakeLists.txt);
-      # no Apple Developer identity or notarization involved here, so
-      # Gatekeeper will still warn on a machine other than the one that
-      # built it -- see platform/macos/AGENT_CONTEXT.md.
+      # no paid Apple Developer identity or notarization involved here (a
+      # deliberate choice, see platform/macos/AGENT_CONTEXT.md), so a
+      # downloaded copy gets com.apple.quarantine tagged on it and Gatekeeper
+      # refuses to open it -- "Install Glyph Rain.command" (bundled into the
+      # zip below) is what actually fixes that for end users, by copying the
+      # bundle into place and stripping that flag itself.
       #
-      # ditto (not zip) preserves the .saver bundle's code signature and
-      # extended attributes correctly -- Apple's documented way to
-      # compress an app/plugin bundle for distribution.
+      # ditto (not zip) preserves the .saver bundle's code signature,
+      # extended attributes, and the installer script's executable bit
+      # correctly -- Apple's documented way to compress a bundle/mixed
+      # directory for distribution.
       - name: Package bundle
-        run: ditto -c -k --sequesterRsrc --keepParent "build/Glyph Rain.saver" "Glyph Rain-macOS.zip"
+        run: |
+          mkdir -p dist
+          cp -R "build/Glyph Rain.saver" "dist/Glyph Rain.saver"
+          cp "scripts/macos/Install Glyph Rain.command" "dist/Install Glyph Rain.command"
+          chmod +x "dist/Install Glyph Rain.command"
+          ditto -c -k --sequesterRsrc dist "Glyph Rain-macOS.zip"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -115,11 +124,20 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
 
+      # .github/RELEASE_NOTES.md carries the actual install instructions --
+      # in particular the macOS Gatekeeper/"damaged" explanation and why
+      # Install Glyph Rain.command needs to be run instead of just dragging
+      # the .saver bundle into place. Without this, a normal user hitting
+      # that error has no obvious next step (see platform/macos/
+      # AGENT_CONTEXT.md's "Distribution" section for the full story).
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: .github/RELEASE_NOTES.md
           files: |
             Glyph Rain-windows/**
             Glyph Rain-linux-dev-binary/**
