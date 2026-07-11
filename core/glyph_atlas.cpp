@@ -1,7 +1,7 @@
 #include "glyph_atlas.h"
 #include "glyph_atlas_data.h"
 
-SDL_Rect glyphSrcRect(unsigned char glyphIndex)
+SDL_Rect glyphSrcRect(int glyphIndex)
 {
     SDL_Rect rect;
     rect.x = (glyphIndex % kGridCols) * kGlyphW;
@@ -9,6 +9,11 @@ SDL_Rect glyphSrcRect(unsigned char glyphIndex)
     rect.w = kGlyphW;
     rect.h = kGlyphH;
     return rect;
+}
+
+int glyphAtlasGlyphCount()
+{
+    return kGlyphAtlasGlyphCount;
 }
 
 SDL_Texture* loadGlyphAtlas(SDL_Renderer* renderer)

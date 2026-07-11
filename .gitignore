@@ -11,6 +11,10 @@ planning/
 # Claude Code local config
 .claude/
 
+# Intermediate build-tool output (tools/generate_glyph_atlas.py) -- not read
+# by any code at runtime, the real asset is the committed core/glyph_atlas_data.h
+assets/fonts/*.bmp
+
 # OS/editor cruft
 .DS_Store
 Thumbs.db

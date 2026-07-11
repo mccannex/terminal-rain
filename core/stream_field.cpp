@@ -79,7 +79,7 @@ void StreamField::updateMovement()
     }
 }
 
-void StreamField::drawGlyphCell(int px, int py, unsigned char glyphIndex, Uint8 r, Uint8 g, Uint8 b)
+void StreamField::drawGlyphCell(int px, int py, int glyphIndex, Uint8 r, Uint8 g, Uint8 b)
 {
     // Opaque cell overwrite: black-fill the cell first (matching GDI's
     // opaque-background TextOutW), then blit the color-keyed glyph on top.
@@ -120,7 +120,7 @@ void StreamField::render()
         Uint8 headR = static_cast<Uint8>(config_.r - s.origSpeed * incR);
         Uint8 headG = static_cast<Uint8>(config_.g - s.origSpeed * incG);
         Uint8 headB = static_cast<Uint8>(config_.b - s.origSpeed * incB);
-        drawGlyphCell(px, s.y, 1 + (rand() % 254), headR, headG, headB);
+        drawGlyphCell(px, s.y, 1 + (rand() % (glyphAtlasGlyphCount() - 1)), headR, headG, headB);
 
         // One row up: dimmer, same falloff scaled to a third.
         int dimIncR = (config_.r / 3) / (config_.speedDelay + 1);
@@ -129,7 +129,7 @@ void StreamField::render()
         Uint8 dimR = static_cast<Uint8>(config_.r / 3 - s.origSpeed * dimIncR);
         Uint8 dimG = static_cast<Uint8>(config_.g / 3 - s.origSpeed * dimIncG);
         Uint8 dimB = static_cast<Uint8>(config_.b / 3 - s.origSpeed * dimIncB);
-        drawGlyphCell(px, s.y - kGlyphH, 1 + (rand() % 254), dimR, dimG, dimB);
+        drawGlyphCell(px, s.y - kGlyphH, 1 + (rand() % (glyphAtlasGlyphCount() - 1)), dimR, dimG, dimB);
 
         // Erase behind the head: one randomized point within the leading
         // window, and one fixed point at backTrace -- the guaranteed wipe.

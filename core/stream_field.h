@@ -47,7 +47,7 @@ private:
     void spawnDespawn();
     void updateMovement();
     void render();
-    void drawGlyphCell(int px, int py, unsigned char glyphIndex, Uint8 r, Uint8 g, Uint8 b);
+    void drawGlyphCell(int px, int py, int glyphIndex, Uint8 r, Uint8 g, Uint8 b);
     void eraseCell(int px, int py);
 
     SDL_Renderer* renderer_;

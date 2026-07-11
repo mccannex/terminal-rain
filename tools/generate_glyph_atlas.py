@@ -1,55 +1,85 @@
 #!/usr/bin/env python3
 """
-One-time asset-generation tool: bakes the CP437 oldschool-vga-8x16 bitmap
-font data (from assets/fonts/oldschool-vga-8x16-fontlist.js) into a single
-24-bit uncompressed BMP glyph atlas, laid out as a 16x16 grid of 8x16 cells
-(128x256 px total). Glyph N lives at cell (N % 16, N // 16).
+One-time asset-generation tool: rasterizes assets/fonts/TerminalVector.ttf
+(a public-domain vector recreation of the classic Windows "Terminal" 8x12
+console font -- see TerminalVector.ttf.LICENSE.txt) into a glyph atlas BMP,
+laid out as a 16-column grid of 8x12 cells. Glyph N lives at cell
+(N % 16, N // 16).
 
-BMP is used (rather than PNG) so the runtime can load it with SDL2's
-built-in SDL_LoadBMP_RW and needs no additional image-decoding library.
-White pixels (255,255,255) are glyph foreground; black (0,0,0) is
-background, meant to be color-keyed transparent at load time.
+480 glyphs total: the first 256 are CP437 in standard byte order (index N
+is CP437 byte N, so this half behaves exactly like the old VGA-font atlas
+did), followed by 224 extra Latin-based glyphs the font also happens to
+cover (Central/European accented letters, a few symbols) in sorted
+codepoint order, purely for extra visual variety in the rain effect.
 
-Also emits a C++ header with the BMP's raw bytes as a compiled-in array, so
-the atlas ships embedded in the binary (via SDL_RWFromConstMem) instead of
-needing to be a companion file on disk next to the executable -- this is
-what lets a built .scr be a single self-contained file. The .bmp itself is
-still written too, purely for visual verification (open it in an image
-viewer) -- it is not read by any code at runtime.
+The font is rendered at its native pixel size (confirmed via inspection to
+render as exactly 8x12 with zero antialiasing -- every pixel is fully on or
+off, not a partial-coverage gray), so no thresholding step is needed, only
+an explicit >127 binarize for robustness.
 
-Run manually whenever the source font data changes:
+BMP is used (rather than PNG) purely for visual verification (open it in an
+image viewer) -- it is not read by any code at runtime. The actual runtime
+asset is the emitted C++ header (a compiled-in byte array), so the built
+binary needs no companion font/image file on disk.
+
+Requires: Pillow (`pip install Pillow`)
+
+Run manually whenever the source font changes:
     python3 tools/generate_glyph_atlas.py
 """
 
-import re
 import struct
 from pathlib import Path
 
+from PIL import Image, ImageDraw, ImageFont
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
-FONTLIST_JS = REPO_ROOT / "assets" / "fonts" / "oldschool-vga-8x16-fontlist.js"
-OUTPUT_BMP = REPO_ROOT / "assets" / "fonts" / "cp437_vga_8x16.bmp"
+FONT_FILE = REPO_ROOT / "assets" / "fonts" / "TerminalVector.ttf"
+OUTPUT_BMP = REPO_ROOT / "assets" / "fonts" / "terminal_8x12.bmp"
 OUTPUT_HEADER = REPO_ROOT / "core" / "glyph_atlas_data.h"
 
 GLYPH_W = 8
-GLYPH_H = 16
+GLYPH_H = 12
 GRID_COLS = 16
-GRID_ROWS = 16
-NUM_GLYPHS = GRID_COLS * GRID_ROWS  # 256
-ATLAS_W = GLYPH_W * GRID_COLS       # 128
-ATLAS_H = GLYPH_H * GRID_ROWS       # 256
+FONT_SIZE = 12  # renders at exactly 8x12 per glyph at this pixel size
 
 
-def parse_fontlist(text: str):
-    """Extract the 256 sixteen-byte glyph rows, in CP437 index order."""
-    glyphs = []
-    for match in re.finditer(r"\[((?:0x[0-9a-fA-F]{2},?\s*){16})\]", text):
-        bytes_str = match.group(1)
-        rows = [int(b, 16) for b in re.findall(r"0x[0-9a-fA-F]{2}", bytes_str)]
-        glyphs.append(rows)
-    if len(glyphs) != NUM_GLYPHS:
-        raise ValueError(f"expected {NUM_GLYPHS} glyphs, parsed {len(glyphs)}")
-    return glyphs
+def build_glyph_codepoints():
+    """First 256 = CP437 in byte order, then 224 extra codepoints the font
+    also covers, in sorted order, appended after."""
+    cp437 = [ord(bytes([b]).decode("cp437")) for b in range(256)]
+
+    font = ImageFont.truetype(str(FONT_FILE), size=FONT_SIZE)
+    # Pillow doesn't expose cmap directly; go via fontTools if available,
+    # otherwise fall back to just the 256 CP437 codepoints.
+    try:
+        from fontTools.ttLib import TTFont
+        cmap = TTFont(str(FONT_FILE)).getBestCmap()
+        extra = sorted(set(cmap.keys()) - set(cp437))
+    except ImportError:
+        print("fontTools not available -- skipping the 224 extra glyphs, "
+              "using only the 256 CP437 codepoints. `pip install fonttools` "
+              "to include them.")
+        extra = []
+
+    return cp437 + extra
+
+
+def render_glyph_pixels(font, codepoint):
+    """Returns an 8x12 list of rows, each a list of booleans (True = lit)."""
+    img = Image.new("L", (GLYPH_W, GLYPH_H), 0)
+    draw = ImageDraw.Draw(img)
+    try:
+        draw.text((0, 0), chr(codepoint), font=font, fill=255)
+    except Exception:
+        pass  # leave blank if the glyph can't be drawn for some reason
+
+    pixels = list(img.getdata())
+    return [
+        [pixels[y * GLYPH_W + x] > 127 for x in range(GLYPH_W)]
+        for y in range(GLYPH_H)
+    ]
 
 
 def build_bmp_bytes(width: int, height: int, pixels) -> bytes:
@@ -58,9 +88,7 @@ def build_bmp_bytes(width: int, height: int, pixels) -> bytes:
     pixel_data_size = row_size * height
     file_size = 54 + pixel_data_size
 
-    header = struct.pack(
-        "<2sIHHI", b"BM", file_size, 0, 0, 54
-    )
+    header = struct.pack("<2sIHHI", b"BM", file_size, 0, 0, 54)
     dib_header = struct.pack(
         "<IiiHHIIiiII",
         40,          # DIB header size
@@ -75,8 +103,7 @@ def build_bmp_bytes(width: int, height: int, pixels) -> bytes:
     )
 
     body = bytearray()
-    # BMP rows are stored bottom-to-top
-    for row in reversed(pixels):
+    for row in reversed(pixels):  # BMP rows are stored bottom-to-top
         row_bytes = bytearray()
         for (r, g, b) in row:
             row_bytes += bytes((b, g, r))  # BMP is BGR
@@ -86,14 +113,15 @@ def build_bmp_bytes(width: int, height: int, pixels) -> bytes:
     return header + dib_header + bytes(body)
 
 
-def write_header(path: Path, bmp_bytes: bytes):
+def write_header(path: Path, bmp_bytes: bytes, num_glyphs: int):
     lines = [
         "// Generated by tools/generate_glyph_atlas.py -- do not edit by hand.",
-        "// Raw bytes of the CP437 glyph atlas BMP (see cp437_vga_8x16.bmp for a",
-        "// viewable copy of the same image), embedded so the atlas ships inside",
-        "// the binary instead of needing a companion file on disk.",
+        "// Raw bytes of the glyph atlas BMP (see terminal_8x12.bmp for a",
+        "// viewable copy of the same image), embedded so the atlas ships",
+        "// inside the binary instead of needing a companion file on disk.",
         "#pragma once",
         "",
+        f"inline constexpr int kGlyphAtlasGlyphCount = {num_glyphs};",
         f"inline constexpr unsigned int kGlyphAtlasBmpSize = {len(bmp_bytes)};",
         "inline constexpr unsigned char kGlyphAtlasBmpData[] = {",
     ]
@@ -107,32 +135,36 @@ def write_header(path: Path, bmp_bytes: bytes):
 
 
 def main():
-    text = FONTLIST_JS.read_text(encoding="utf-8")
-    glyphs = parse_fontlist(text)
+    codepoints = build_glyph_codepoints()
+    num_glyphs = len(codepoints)
+    grid_rows = (num_glyphs + GRID_COLS - 1) // GRID_COLS
+    atlas_w = GLYPH_W * GRID_COLS
+    atlas_h = GLYPH_H * grid_rows
+
+    font = ImageFont.truetype(str(FONT_FILE), size=FONT_SIZE)
 
     white = (255, 255, 255)
     black = (0, 0, 0)
+    pixels = [[black] * atlas_w for _ in range(atlas_h)]
 
-    pixels = [[black] * ATLAS_W for _ in range(ATLAS_H)]
-
-    for glyph_index, rows in enumerate(glyphs):
+    for glyph_index, codepoint in enumerate(codepoints):
         cell_col = glyph_index % GRID_COLS
         cell_row = glyph_index // GRID_COLS
         origin_x = cell_col * GLYPH_W
         origin_y = cell_row * GLYPH_H
 
-        for y, row_byte in enumerate(rows):
+        glyph_pixels = render_glyph_pixels(font, codepoint)
+        for y in range(GLYPH_H):
             for x in range(GLYPH_W):
-                bit = (row_byte >> (7 - x)) & 1
-                pixels[origin_y + y][origin_x + x] = white if bit else black
+                pixels[origin_y + y][origin_x + x] = white if glyph_pixels[y][x] else black
 
-    bmp_bytes = build_bmp_bytes(ATLAS_W, ATLAS_H, pixels)
+    bmp_bytes = build_bmp_bytes(atlas_w, atlas_h, pixels)
 
     OUTPUT_BMP.write_bytes(bmp_bytes)
-    print(f"Wrote {OUTPUT_BMP} ({ATLAS_W}x{ATLAS_H}, {len(glyphs)} glyphs)")
+    print(f"Wrote {OUTPUT_BMP} ({atlas_w}x{atlas_h}, {num_glyphs} glyphs)")
 
-    write_header(OUTPUT_HEADER, bmp_bytes)
-    print(f"Wrote {OUTPUT_HEADER} ({len(bmp_bytes)} bytes embedded)")
+    write_header(OUTPUT_HEADER, bmp_bytes, num_glyphs)
+    print(f"Wrote {OUTPUT_HEADER} ({len(bmp_bytes)} bytes embedded, {num_glyphs} glyphs)")
 
 
 if __name__ == "__main__":
