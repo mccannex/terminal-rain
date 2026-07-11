@@ -39,6 +39,13 @@ if(NOT WIN32)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SDBUS REQUIRED IMPORTED_TARGET libsystemd)
     target_link_libraries(glyph_rain_dev PRIVATE PkgConfig::SDBUS)
+else()
+    # src/sdl_app/main.cpp (shared with the Linux/WSL dev binary) calls
+    # queryKdeOutputScale() unconditionally -- it's documented as safe to
+    # call on any platform, always falling back to 1.0 outside a live Plasma
+    # session. This trivial stub keeps that contract true on Windows, which
+    # has no KWin/D-Bus to query in the first place.
+    target_sources(glyph_rain_dev PRIVATE src/sdl_app/kde_display_scale_stub.cpp)
 endif()
 
 # Only deploy the default config if the user doesn't already have one next

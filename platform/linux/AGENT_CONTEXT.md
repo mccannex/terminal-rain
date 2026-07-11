@@ -170,11 +170,31 @@ when, on **this real machine** (not WSL):
 all four verification-gate items above are checked off, live-tested on this
 real machine, not just WSL. Display scaling is also fixed (see above).
 
-**Not yet done / next up: multi-monitor support.** Right now there's a
-single fullscreen window on whichever display SDL picks by default — the
-user wants a window per connected display, so the screensaver actually
-covers every screen the way a real system screensaver would. Two known loose
-ends to fold into that work if not done first: the missing dedicated Linux
-packaging target (see "Build setup" above), and generalizing the
-connector-name display-scale query (see "Display scaling" above) from
-"once, globally" to "once per window."
+**Multi-monitor support has landed from the Windows side** (see
+`FEATURE_PARITY_PLAN.md` Phase 2, `PLATFORM_AND_DISTRIBUTION_PLAN.md` item 3):
+`core/app_loop.*` now has `runMultiDisplayStreamLoop()`, which enumerates
+every SDL display and opens one correctly-sized window per screen with a
+single unified exit-on-input across all of them. Verified live on the Windows
+machine's real 4-monitor layout. **`src/sdl_app/main.cpp` (this machine's
+binary) already calls it** — as of this commit, `glyph_rain_dev` here should
+already open one window per connected display rather than just one, with
+`queryKdeOutputScale()` now called once per display index via the same
+callback mechanism (no code changes needed on this end for that wiring — it
+fell out of the existing per-display callback design). **Live-test this on
+the real 4-monitor Wayland/KDE setup here** — it's only been run against
+Windows so far, and this machine's mix of per-output KDE scale factors
+(100%–~206%) is exactly the kind of case that needs real verification, not
+assumed-working.
+
+Two loose ends still open, neither blocking the above:
+- The missing dedicated Linux packaging target (see "Build setup" above) —
+  still running off `glyph_rain_dev` directly via the powerdevil launcher
+  script, no separate installed `glyph_rain` binary for Linux yet.
+- A cross-platform build regression was found and fixed on the Windows side
+  along the way: `src/sdl_app/main.cpp` was calling `queryKdeOutputScale()`
+  unconditionally, but `CMakeLists.txt` only linked its real implementation
+  `if(NOT WIN32)`, silently breaking the Windows `glyph_rain_dev` build.
+  Fixed with `src/sdl_app/kde_display_scale_stub.cpp` (Windows-only, returns
+  `1.0f`) — shouldn't affect this machine at all (`if(NOT WIN32)` still
+  links the real D-Bus implementation here), just noting it in case anything
+  about the KDE scale wiring looks different than expected.
