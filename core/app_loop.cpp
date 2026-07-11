@@ -116,11 +116,16 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
         // undefined position scoped to that display index, plus the
         // FULLSCREEN_DESKTOP flag, which then sizes the window to that
         // display's actual desktop resolution automatically.
+        // ALWAYS_ON_TOP is needed on top of FULLSCREEN_DESKTOP because KDE
+        // panels set to "Always Visible" are designed to stay above normal
+        // fullscreen windows -- only windows requesting the WM's "above"
+        // layer get to cover them.
         SDL_Window* window = SDL_CreateWindow(
             "Glyph Rain",
             SDL_WINDOWPOS_UNDEFINED_DISPLAY(i), SDL_WINDOWPOS_UNDEFINED_DISPLAY(i),
             1024, 768,
-            SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_ALLOW_HIGHDPI);
+            SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_ALLOW_HIGHDPI |
+                SDL_WINDOW_ALWAYS_ON_TOP);
         if (!window) continue;
 
         SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);

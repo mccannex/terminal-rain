@@ -85,7 +85,6 @@ sudo dnf install -y libX11-devel libXext-devel libXrandr-devel libXcursor-devel 
     libXi-devel libXfixes-devel libXScrnSaver-devel libxkbcommon-devel
 sudo dnf install -y wayland-devel wayland-protocols-devel mesa-libEGL-devel \
     mesa-libGL-devel libdrm-devel
-sudo dnf install -y systemd-devel   # sd-bus, for the KDE display-scale query
 ```
 
 Build (SDL2 is fetched automatically via CMake `FetchContent` — no system SDL2
@@ -113,34 +112,49 @@ any integration work:
 ./build/linux/glyph_rain_dev
 ```
 
-## Display scaling (done)
+## Display scaling (done, superseded once — see history)
 
-The glyph atlas renders at a fixed `8x12` raw pixels
-(`core/glyph_atlas.h`), with no DPI/scale awareness by default. On a
-multi-monitor setup with per-output KDE scale factors (this machine: 4x
-1920x1080-native panels of very different physical sizes, individually
-scaled from 100% up to ~206% to normalize perceived size), that made the
-screensaver render far too small on the high-scale primary display — SDL2's
-own HiDPI queries (`SDL_GetRendererOutputSize` w/ `SDL_WINDOW_ALLOW_HIGHDPI`,
-`SDL_GetDisplayDPI`) don't surface KWin's real per-output fractional scale
-for a `FULLSCREEN_DESKTOP` window in this SDL2/KWin combination, so there was
-no way to get the right factor from SDL alone.
+The glyph atlas renders at a fixed `8x12` raw pixels (`core/glyph_atlas.h`),
+with no DPI/scale awareness by default. On this machine's multi-monitor setup
+(4 panels of very different physical sizes, individually KDE-scaled from
+100% up to ~206% to normalize perceived size), that made the screensaver
+render at wildly inconsistent physical glyph sizes across monitors.
 
-Fixed by querying KWin's live config directly over D-Bus
-(`org.kde.KScreen` → `/backend` → `org.kde.kscreen.Backend.getConfig`),
-matched by connector name (`SDL_GetDisplayName()`, stripped of the
-`"<connector> <diagonal>\""`-style suffix SDL appends), to get the exact
-configured `scale` for the output the window landed on. `runStreamLoop`/
-`StreamField` (`core/app_loop.*`, `core/stream_field.*`) now take a
-`contentScale` float that multiplies glyph cell size accordingly. The D-Bus
-query itself (`src/sdl_app/kde_display_scale.*`) is deliberately kept out of
-`core/` (KDE-specific, and `core/` is shared with the Windows build) and
-linked only into Linux targets via `sd-bus` (`systemd-devel`).
+**First attempt (abandoned): querying KWin's per-output scale over D-Bus**
+(`org.kde.KScreen` → `getConfig`), then manually multiplying it into a
+`contentScale` that scales up the glyph cell size. This actually needed two
+fixes before it produced correct numbers at all (the `/backend` object is
+lazily instantiated — needs a `requestBackend` call first, or `getConfig`
+fails outright; and SDL was auto-selecting the `x11` video driver, i.e.
+XWayland, whose virtual screen has its own global supersampling scale
+distinct from KWin's true per-output geometry, so even a correct D-Bus scale
+value produced wrong on-screen sizing when multiplied against XWayland's
+already-transformed window geometry). Once both of those were fixed the
+scale values were provably correct (matched `kscreen-doctor -j` exactly) but
+the on-screen result was *still* wrong for 3 of 4 monitors, confirming the
+XWayland coordinate-space mismatch was the real, deeper problem, not
+something fixable by getting the D-Bus number right.
 
-This scale-query-by-connector-name approach is written to extend cleanly to
-per-display windows for multi-monitor support (next up, see Status) — same
-D-Bus call, just resolve+apply the scale once per window instead of once
-globally.
+**What actually shipped:** force native Wayland instead of letting SDL fall
+back to `x11` (`setenv("SDL_VIDEODRIVER", "wayland", 1)` in
+`src/sdl_app/main.cpp`, before `SDL_Init`), and delete the D-Bus scale query
+entirely rather than fix it further. Under native Wayland with
+`SDL_WINDOW_ALLOW_HIGHDPI`, a window's drawable (backbuffer) size already
+differs from its logical size by exactly the compositor's real per-output
+scale. `runMultiDisplayStreamLoop` (`core/app_loop.cpp`) draws into a
+logical-sized off-screen texture and `SDL_RenderCopy`s it stretched to fill
+the full drawable on present — that stretch *is* the correct per-monitor
+scale, automatically, no manual multiplier needed. This is the same
+mechanism the Windows build already relied on (it's always passed `nullptr`
+for the `getContentScale` callback — see `src/win32/main.cpp`), so Linux and
+Windows now share one HiDPI story instead of Linux carrying its own
+KDE-specific one. `src/sdl_app/kde_display_scale.*` and its `sd-bus`/
+`systemd-devel` link in `CMakeLists.txt` were deleted along with it — no
+platform currently supplies a `getContentScale` callback, that parameter
+exists purely as an extension point (see `core/app_loop.h`).
+
+Confirmed live on this machine's real 4-monitor mixed-DPI layout: glyph size
+now looks visually consistent across all 4 displays.
 
 ## Verification gate (adapt from the Windows one)
 
@@ -166,35 +180,36 @@ when, on **this real machine** (not WSL):
 
 ## Status
 
-**This phase (single-display Linux screensaver integration) is done** —
-all four verification-gate items above are checked off, live-tested on this
-real machine, not just WSL. Display scaling is also fixed (see above).
+**Both single-display and multi-monitor Linux screensaver integration are
+done and live-tested on this real machine** (4-monitor mixed-DPI Wayland/KDE
+setup, not WSL). All four verification-gate items above are checked off.
 
-**Multi-monitor support has landed from the Windows side** (see
-`FEATURE_PARITY_PLAN.md` Phase 2, `PLATFORM_AND_DISTRIBUTION_PLAN.md` item 3):
-`core/app_loop.*` now has `runMultiDisplayStreamLoop()`, which enumerates
-every SDL display and opens one correctly-sized window per screen with a
-single unified exit-on-input across all of them. Verified live on the Windows
-machine's real 4-monitor layout. **`src/sdl_app/main.cpp` (this machine's
-binary) already calls it** — as of this commit, `glyph_rain_dev` here should
-already open one window per connected display rather than just one, with
-`queryKdeOutputScale()` now called once per display index via the same
-callback mechanism (no code changes needed on this end for that wiring — it
-fell out of the existing per-display callback design). **Live-test this on
-the real 4-monitor Wayland/KDE setup here** — it's only been run against
-Windows so far, and this machine's mix of per-output KDE scale factors
-(100%–~206%) is exactly the kind of case that needs real verification, not
-assumed-working.
+`core/app_loop.*`'s `runMultiDisplayStreamLoop()` (landed from the Windows
+side — see `FEATURE_PARITY_PLAN.md` Phase 2,
+`PLATFORM_AND_DISTRIBUTION_PLAN.md` item 3) enumerates every SDL display and
+opens one correctly-sized window per screen with a single unified
+exit-on-input across all of them; `src/sdl_app/main.cpp` calls it. Confirmed
+live on this machine:
+- One fullscreen window per display, correctly sized. ✅
+- Consistent glyph size across all 4 differently-scaled monitors — see
+  "Display scaling" above for what that took (forcing native Wayland,
+  dropping the D-Bus scale query entirely). ✅
+- The KDE panel/task manager and system cursor stay hidden underneath every
+  window — needed adding `SDL_WINDOW_ALWAYS_ON_TOP` alongside
+  `FULLSCREEN_DESKTOP` in `runMultiDisplayStreamLoop`'s window creation
+  (`core/app_loop.cpp`), since a panel set to "Always Visible" is designed by
+  KDE to stay above normal fullscreen windows — only windows requesting the
+  WM's "above" layer get to cover it. ✅
+- Moving the mouse closes all four windows together cleanly, no crash. ✅
 
-Two loose ends still open, neither blocking the above:
-- The missing dedicated Linux packaging target (see "Build setup" above) —
-  still running off `glyph_rain_dev` directly via the powerdevil launcher
-  script, no separate installed `glyph_rain` binary for Linux yet.
-- A cross-platform build regression was found and fixed on the Windows side
-  along the way: `src/sdl_app/main.cpp` was calling `queryKdeOutputScale()`
-  unconditionally, but `CMakeLists.txt` only linked its real implementation
-  `if(NOT WIN32)`, silently breaking the Windows `glyph_rain_dev` build.
-  Fixed with `src/sdl_app/kde_display_scale_stub.cpp` (Windows-only, returns
-  `1.0f`) — shouldn't affect this machine at all (`if(NOT WIN32)` still
-  links the real D-Bus implementation here), just noting it in case anything
-  about the KDE scale wiring looks different than expected.
+One loose end still open, not blocking the above: the missing dedicated
+Linux packaging target (see "Build setup" above) — still running off
+`glyph_rain_dev` directly via the powerdevil launcher script, no separate
+installed `glyph_rain` binary for Linux yet, unlike Windows'
+`src/win32/main.cpp` → `.scr` split.
+
+Idea floated for later, not started: a user-configurable "master scale"
+multiplier on top of the per-monitor auto-scaling, to shift overall glyph
+size up/down to taste after normalization (came up because the laptop
+panel's auto-scaled result, while technically consistent with the other
+three monitors, ran a bit larger than preferred).
