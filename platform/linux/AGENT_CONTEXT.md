@@ -36,39 +36,48 @@ live-tested and iterated on real Fedora/KDE Plasma** — a WSL build on the
 Windows machine only ever proved the CMake/SDL2 core *compiles* on Linux, not
 that any of the actual integration work here is done.
 
-**Open decision — make this first:** how Glyph Rain actually integrates as a
-Plasma screensaver. Three candidates, not yet chosen between:
+**Integration approach — decided.** Confirmed this machine's Plasma session is
+Wayland (`echo $XDG_SESSION_TYPE` → `wayland`), which ruled out the
+XScreenSaver-compat option outright. Of the two remaining candidates (a
+`swayidle`/logind-triggered fullscreen app, vs. a native `kscreenlocker` QML
+plugin), neither is what actually shipped — a simpler native option surfaced
+instead:
 
-1. **XScreenSaver-compat binary** — implement the conventional xscreensaver
-   command-line/window-embedding protocol; works under X11, and KDE has an
-   xscreensaver-compatibility path. Won't work under a pure Wayland session.
-2. **Idle-triggered fullscreen app via `swayidle`/systemd-logind hooks** — no
-   "real" screensaver framework integration, just a fullscreen SDL window
-   launched by an idle timer and killed on input. Simplest, most portable
-   (works regardless of X11/Wayland), but isn't a "real" Plasma screensaver
-   the user can pick from System Settings' screen-locking UI.
-3. **Native KDE `kscreenlocker` QML plugin** — the "real" integration, shows
-   up in Plasma's own Screen Locking settings like a first-class screensaver.
-   Most work, most KDE-version-coupling risk, best end-user experience.
+**KDE's own Power Management → Energy Saving → "Run custom script" idle
+hook.** System Settings has a built-in "after a period of inactivity, run
+script X" action (`powerdevil`), configured entirely through its own KCM —
+no `swayidle`, no systemd timer units, no `kscreenlocker` QML/KPackage
+plugin, no locking involved at all (this machine doesn't want session
+locking, just the visual). It's genuinely native to Plasma, uses Plasma's own
+idle detection, and needed zero new runtime dependencies beyond the script
+itself.
 
-Check what Plasma/session type (X11 vs Wayland) this machine actually runs
-before deciding — that alone may rule out option 1. Document the decision and
-reasoning here once made, the same way `SCR_SHELL_PLAN.md` documented the
-Windows `scrnsave.c`-vs-hand-rolled decision.
+Concretely:
+- Launcher script: `~/.local/bin/glyph-rain-screensaver.sh` — a one-line
+  `exec` wrapper around the built `glyph_rain_dev` binary (currently pointing
+  at the `build/linux/` output directly; there's still no separate installed
+  `glyph_rain` binary/target for Linux, see below).
+- Configured via System Settings → Power Management → Energy Saving →
+  "Other Settings" → "Run custom script" → path to the launcher script above,
+  with an inactivity timer (tested at 1 min, should be turned up to a normal
+  value for daily use).
+- The existing mouse-motion debounce in `core/app_loop.cpp` (already written
+  for the Windows `.scr` case) handles clean exit-on-input with no changes
+  needed — powerdevil just launches the script once at the idle threshold and
+  doesn't manage its lifecycle otherwise; the app exits itself on real input.
 
-**Update:** the user believes this machine's Plasma session is Wayland
-(unconfirmed by direct inspection yet — worth double-checking with
-`echo $XDG_SESSION_TYPE` on first login there). If so, option 1
-(XScreenSaver-compat) is ruled out, narrowing the real choice to option 2
-(`swayidle`/logind, simpler, no native picker entry) vs. option 3
-(`kscreenlocker` QML plugin, real Plasma integration, more work).
+This satisfies the spirit of verification-gate item 2 below (native Settings
+UI, not a manual script) even though it's a different KCM page than "Screen
+Locking" — there's no meaningful separate "screensaver" concept left in
+modern Plasma's Screen Locking UI to integrate with anyway (see the
+`kscreenlocker` note further down for why that route was never pursued).
 
 ## Build setup (Fedora)
 
-Dev packages needed (X11 *and* Wayland, since this machine's session type
-isn't confirmed yet, and the project already hit "SDL2 configures successfully
-but silently builds with every video driver off" once from missing dev
-headers — don't repeat that):
+Dev packages needed (X11 *and* Wayland — this machine's session is confirmed
+Wayland, but the project already hit "SDL2 configures successfully but
+silently builds with every video driver off" once from missing dev headers,
+so both sets stay installed rather than trimming to Wayland-only):
 
 ```bash
 sudo dnf install -y gcc-c++ cmake make git
@@ -76,6 +85,7 @@ sudo dnf install -y libX11-devel libXext-devel libXrandr-devel libXcursor-devel 
     libXi-devel libXfixes-devel libXScrnSaver-devel libxkbcommon-devel
 sudo dnf install -y wayland-devel wayland-protocols-devel mesa-libEGL-devel \
     mesa-libGL-devel libdrm-devel
+sudo dnf install -y systemd-devel   # sd-bus, for the KDE display-scale query
 ```
 
 Build (SDL2 is fetched automatically via CMake `FetchContent` — no system SDL2
@@ -87,11 +97,14 @@ cmake --build build/linux -j$(nproc)
 ```
 
 This currently builds `glyph_rain_core` (static lib) and `glyph_rain_dev` (the
-plain SDL app — same binary the WSL sanity build produces). There is no
-Linux-specific packaging target yet (the `glyph_rain` Windows `.scr` target in
-`CMakeLists.txt` is gated `if(WIN32)`) — that gets added once the integration
-approach above is chosen, mirroring how `src/win32/main.cpp` wraps
-`src/sdl_app/main.cpp`'s core loop for the Windows-specific shell.
+plain SDL app — same binary the WSL sanity build produces). **`glyph_rain_dev`
+is also what's actually running as the live screensaver right now** — the
+powerdevil launcher script points straight at `build/linux/glyph_rain_dev`.
+There's still no dedicated Linux packaging target/binary the way
+`src/win32/main.cpp` wraps `src/sdl_app/main.cpp` for Windows (gated
+`if(WIN32)` in `CMakeLists.txt`) — that split is still a real loose end, not
+yet done, worth doing before this is genuinely "shipped" rather than "working
+off a dev build."
 
 Sanity-check the dev binary runs and closes cleanly on input before starting
 any integration work:
@@ -100,22 +113,68 @@ any integration work:
 ./build/linux/glyph_rain_dev
 ```
 
+## Display scaling (done)
+
+The glyph atlas renders at a fixed `8x12` raw pixels
+(`core/glyph_atlas.h`), with no DPI/scale awareness by default. On a
+multi-monitor setup with per-output KDE scale factors (this machine: 4x
+1920x1080-native panels of very different physical sizes, individually
+scaled from 100% up to ~206% to normalize perceived size), that made the
+screensaver render far too small on the high-scale primary display — SDL2's
+own HiDPI queries (`SDL_GetRendererOutputSize` w/ `SDL_WINDOW_ALLOW_HIGHDPI`,
+`SDL_GetDisplayDPI`) don't surface KWin's real per-output fractional scale
+for a `FULLSCREEN_DESKTOP` window in this SDL2/KWin combination, so there was
+no way to get the right factor from SDL alone.
+
+Fixed by querying KWin's live config directly over D-Bus
+(`org.kde.KScreen` → `/backend` → `org.kde.kscreen.Backend.getConfig`),
+matched by connector name (`SDL_GetDisplayName()`, stripped of the
+`"<connector> <diagonal>\""`-style suffix SDL appends), to get the exact
+configured `scale` for the output the window landed on. `runStreamLoop`/
+`StreamField` (`core/app_loop.*`, `core/stream_field.*`) now take a
+`contentScale` float that multiplies glyph cell size accordingly. The D-Bus
+query itself (`src/sdl_app/kde_display_scale.*`) is deliberately kept out of
+`core/` (KDE-specific, and `core/` is shared with the Windows build) and
+linked only into Linux targets via `sd-bus` (`systemd-devel`).
+
+This scale-query-by-connector-name approach is written to extend cleanly to
+per-display windows for multi-monitor support (next up, see Status) — same
+D-Bus call, just resolve+apply the scale once per window instead of once
+globally.
+
 ## Verification gate (adapt from the Windows one)
 
 Mirroring `SCR_SHELL_PLAN.md`'s gate for the `.scr` shell — this item is done
 when, on **this real machine** (not WSL):
 
-1. The build installs/registers through whatever the chosen integration
-   approach's normal mechanism is (not just manually running a binary).
-2. It's selectable through Plasma's normal screen-locking/screensaver UI for
-   that approach (or documented why not, if option 2 was chosen and there's
-   deliberately no such UI entry).
-3. It actually activates via the real idle-trigger mechanism, not just a
-   manual launch.
-4. It exits cleanly on real input (mirror the mouse-motion debounce note in
-   `core/app_loop.cpp` / the Windows self-contained-binary notes — window
-   managers can synthesize a spurious motion event on window creation/focus).
+1. ✅ The build installs/registers through whatever the chosen integration
+   approach's normal mechanism is (not just manually running a binary) — the
+   powerdevil "run script after inactivity" hook, configured through System
+   Settings, not a manual launch.
+2. ✅ (with a caveat) It's selectable through Plasma's normal screen-locking/
+   screensaver UI for that approach — not literally the "Screen Locking" KCM
+   (deliberate: no session locking wanted here), but the equally-native Power
+   Management → Energy Saving KCM's own idle-script hook. Documented here per
+   the original gate's own allowance for "option 2, no such UI entry."
+3. ✅ It actually activates via the real idle-trigger mechanism — live-tested,
+   confirmed working via powerdevil's own inactivity timer.
+4. ✅ It exits cleanly on real input — live-tested with real mouse movement,
+   process exits cleanly, no crash/error output. (The motion-event debounce
+   in `core/app_loop.cpp`, ported from the Windows version, handles the
+   window-manager-synthesizes-a-spurious-motion-event-on-creation case
+   correctly — confirmed by testing.)
 
 ## Status
 
-Not yet started. Waiting on the integration-approach decision above.
+**This phase (single-display Linux screensaver integration) is done** —
+all four verification-gate items above are checked off, live-tested on this
+real machine, not just WSL. Display scaling is also fixed (see above).
+
+**Not yet done / next up: multi-monitor support.** Right now there's a
+single fullscreen window on whichever display SDL picks by default — the
+user wants a window per connected display, so the screensaver actually
+covers every screen the way a real system screensaver would. Two known loose
+ends to fold into that work if not done first: the missing dedicated Linux
+packaging target (see "Build setup" above), and generalizing the
+connector-name display-scale query (see "Display scaling" above) from
+"once, globally" to "once per window."
