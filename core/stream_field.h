@@ -7,9 +7,9 @@ struct StreamFieldConfig
 {
     int maxStreams = 3000;  // max number of concurrently active streams
     int backTrace = 200;    // rows behind the head guaranteed fully erased
-    int leading = 100;      // min rows behind the head before random erase can happen
+    int leading = 50;       // min rows behind the head before random erase can happen
     int spacePad = 30;      // range added to leading for the random erase point
-    int speedDelay = 10;    // max ticks a stream can wait between row-advances
+    int speedDelay = 5;     // max ticks a stream can wait between row-advances
     Uint8 r = 150, g = 255, b = 125; // base head color
 };
 

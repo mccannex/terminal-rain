@@ -1,4 +1,5 @@
 #include "glyph_atlas.h"
+#include "glyph_atlas_data.h"
 
 SDL_Rect glyphSrcRect(unsigned char glyphIndex)
 {
@@ -10,16 +11,19 @@ SDL_Rect glyphSrcRect(unsigned char glyphIndex)
     return rect;
 }
 
-SDL_Texture* loadGlyphAtlas(SDL_Renderer* renderer, const char* fileName)
+SDL_Texture* loadGlyphAtlas(SDL_Renderer* renderer)
 {
-    char* basePath = SDL_GetBasePath();
-    std::string atlasPath = std::string(basePath ? basePath : "./") + fileName;
-    if (basePath) SDL_free(basePath);
+    SDL_RWops* rw = SDL_RWFromConstMem(kGlyphAtlasBmpData, static_cast<int>(kGlyphAtlasBmpSize));
+    if (!rw)
+    {
+        SDL_Log("SDL_RWFromConstMem failed: %s", SDL_GetError());
+        return nullptr;
+    }
 
-    SDL_Surface* atlasSurface = SDL_LoadBMP(atlasPath.c_str());
+    SDL_Surface* atlasSurface = SDL_LoadBMP_RW(rw, 1); // 1 = SDL closes/frees rw for us
     if (!atlasSurface)
     {
-        SDL_Log("SDL_LoadBMP failed for '%s': %s", atlasPath.c_str(), SDL_GetError());
+        SDL_Log("SDL_LoadBMP_RW failed: %s", SDL_GetError());
         return nullptr;
     }
     SDL_SetColorKey(atlasSurface, SDL_TRUE, SDL_MapRGB(atlasSurface->format, 0, 0, 0));

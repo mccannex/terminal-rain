@@ -1,8 +1,9 @@
-# Matrix Screensaver
+# Glyph Rain
 
 A cross-platform rewrite of a classic "digital rain" Matrix screensaver, built on
-SDL2 with a platform-agnostic simulation core. See `planning/OVERVIEW.md` for the
-architecture and rationale behind the rewrite.
+SDL2 with a platform-agnostic simulation core. Renamed from the original project's
+"Matrix Screensaver" to avoid ambiguity with the legacy build it's descended from
+(see `legacy/`).
 
 ## Credits
 

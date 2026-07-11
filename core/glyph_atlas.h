@@ -1,6 +1,5 @@
 #pragma once
 #include <SDL.h>
-#include <string>
 
 // CP437 glyph atlas: 16x16 grid of 8x16 cells (128x256 px total), generated
 // by tools/generate_glyph_atlas.py from the oldschool-vga-8x16 bitmap font
@@ -12,7 +11,8 @@ constexpr int kGridCols = 16;
 
 SDL_Rect glyphSrcRect(unsigned char glyphIndex);
 
-// Loads the atlas BMP from next to the running executable, color-keys black
-// as transparent, and sets nearest-neighbor scaling. Returns nullptr on
-// failure (check SDL_GetError()).
-SDL_Texture* loadGlyphAtlas(SDL_Renderer* renderer, const char* fileName);
+// Loads the atlas from the compiled-in byte array (core/glyph_atlas_data.h)
+// rather than a file on disk, so the built binary is self-contained. Color-
+// keys black as transparent and sets nearest-neighbor scaling. Returns
+// nullptr on failure (check SDL_GetError()).
+SDL_Texture* loadGlyphAtlas(SDL_Renderer* renderer);

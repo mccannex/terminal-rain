@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
-project(MatrixSS LANGUAGES CXX)
+project(GlyphRain LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
-set(SDL_SHARED ON CACHE BOOL "" FORCE)
-set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+# Statically linked so built binaries are self-contained (no SDL2.dll /
+# libSDL2.so companion file needed alongside the executable).
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
@@ -18,32 +20,42 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL2)
 
-add_library(matrix_core STATIC
+add_library(glyph_rain_core STATIC
     core/glyph_atlas.cpp
     core/stream_field.cpp
-    core/config.cpp)
-target_link_libraries(matrix_core PUBLIC SDL2::SDL2)
-target_include_directories(matrix_core PUBLIC ${CMAKE_SOURCE_DIR})
+    core/config.cpp
+    core/app_loop.cpp)
+target_link_libraries(glyph_rain_core PUBLIC SDL2::SDL2-static)
+target_include_directories(glyph_rain_core PUBLIC ${CMAKE_SOURCE_DIR})
 
-add_executable(matrix_hello src/sdl_app/main.cpp)
-target_link_libraries(matrix_hello PRIVATE matrix_core SDL2::SDL2 SDL2::SDL2main)
-
-if(WIN32)
-    add_custom_command(TARGET matrix_hello POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:SDL2::SDL2>
-            $<TARGET_FILE_DIR:matrix_hello>)
-endif()
-
-add_custom_command(TARGET matrix_hello POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/assets/fonts/cp437_vga_8x16.bmp
-        $<TARGET_FILE_DIR:matrix_hello>)
+add_executable(glyph_rain_dev src/sdl_app/main.cpp)
+target_link_libraries(glyph_rain_dev PRIVATE glyph_rain_core SDL2::SDL2-static SDL2::SDL2main)
 
 # Only deploy the default config if the user doesn't already have one next
 # to the exe -- rebuilds must never clobber a user's edited matrix.cfg.
-add_custom_command(TARGET matrix_hello POST_BUILD
+# glyph_rain_dev (the dev/WSL sanity binary) keeps this for quick tuning
+# iteration; the shipped glyph_rain screensaver deliberately doesn't (see
+# below) and just uses its compiled-in defaults for now.
+add_custom_command(TARGET glyph_rain_dev POST_BUILD
     COMMAND ${CMAKE_COMMAND}
         -DSRC=${CMAKE_SOURCE_DIR}/config/matrix.default.cfg
-        -DDEST=$<TARGET_FILE_DIR:matrix_hello>/matrix.cfg
+        -DDEST=$<TARGET_FILE_DIR:glyph_rain_dev>/matrix.cfg
         -P ${CMAKE_SOURCE_DIR}/cmake/copy_if_missing.cmake)
+
+if(WIN32)
+    add_executable(glyph_rain WIN32 src/win32/main.cpp)
+    target_link_libraries(glyph_rain PRIVATE glyph_rain_core SDL2::SDL2-static SDL2::SDL2main)
+
+    # A .scr is just a renamed .exe -- Windows recognizes the extension and
+    # adds Install/Test/Open to its right-click menu with no additional
+    # registration needed beyond the file existing. With SDL2 statically
+    # linked and the glyph atlas embedded (core/glyph_atlas_data.h), this is
+    # the entire deliverable -- no companion files needed alongside it.
+    # Named distinctly from the legacy build's "Matrix Screensaver.scr" so
+    # Windows' screensaver picker (which derives its displayed name from the
+    # filename when no version resource is embedded) can't confuse the two.
+    add_custom_command(TARGET glyph_rain POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:glyph_rain>
+            $<TARGET_FILE_DIR:glyph_rain>/glyph_rain.scr)
+endif()
