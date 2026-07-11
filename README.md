@@ -15,9 +15,12 @@ SDL2 with a platform-agnostic simulation core. Renamed from the original project
   action instead. Multi-monitor aware, with glyph size normalized to KDE's per-output
   display scale. See [`platform/linux/AGENT_CONTEXT.md`](platform/linux/AGENT_CONTEXT.md)
   for the full integration story.
-- **macOS**: a real `.saver` bundle (`src/macos_saver/GlyphRainView.mm`) — installs by
-  copying into `~/Library/Screen Savers`, appears in System Settings' Screen Saver
-  picker, built entirely with Command Line Tools (no Xcode.app required). One known
+- **macOS**: a real `.saver` bundle (`src/macos_saver/GlyphRainView.mm`), built
+  entirely with Command Line Tools (no Xcode.app required). Not notarized (no paid
+  Apple Developer Program membership) — a release download is Gatekeeper-quarantined
+  and needs the bundled `Install Glyph Rain.command` (double-click, or `right-click →
+  Open` once if macOS calls it "unidentified developer") to actually install it,
+  rather than dragging the `.saver` into `~/Library/Screen Savers` directly. One known
   cosmetic limitation: the picker's small grid thumbnail shows a generic icon rather
   than the shipped preview image, believed to be an OS-level limitation of this macOS
   version's screensaver-hosting architecture. See

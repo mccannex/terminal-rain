@@ -63,7 +63,8 @@ Produces `build/Glyph Rain.saver`, ad-hoc signed as a `POST_BUILD` step
 (`codesign --force --deep --sign -`) so Gatekeeper/AMFI accept a locally
 built, non-notarized bundle for local install/testing. No Apple Developer
 account or identity involved at this stage — see "Distribution" below for
-what real distribution outside this machine would additionally need.
+what real distribution outside this machine additionally needed, and the
+decision not to pursue it.
 
 Install for local testing:
 
@@ -74,6 +75,35 @@ cp -R "build/Glyph Rain.saver" ~/Library/Screen\ Savers/
 `~/Library/Screen Savers` is auto-scanned by System Settings' Screen Saver
 picker — no separate registration step (unlike Windows' `InstallScreenSaver`
 or Linux's powerdevil KCM hookup).
+
+## Distribution — decided against paid notarization
+
+A file built and `cp -R`'d locally (as above) has no `com.apple.quarantine`
+attribute, so ad-hoc signing is enough for Gatekeeper to accept it. A copy
+downloaded through a browser (i.e. every release artifact) *does* get that
+attribute, and Gatekeeper flatly refuses to open a quarantined ad-hoc-signed
+bundle at all -- confirmed live: downloading `v1.0.1`'s release zip and
+trying to install it produced `"Glyph Rain.saver" is damaged and can't be
+opened`, a misleading message (nothing is actually corrupt) for what's
+really just an ad-hoc signature not satisfying a quarantined file's stricter
+check.
+
+The real fix is a paid Apple Developer Program membership ($99/year): a
+"Developer ID Application" certificate to sign with instead of ad-hoc, plus
+`xcrun notarytool submit` + `xcrun stapler staple` as extra CI steps. **Not
+pursued** -- explicitly rejected in favor of a free workaround.
+
+What shipped instead: `scripts/macos/Install Glyph Rain.command`, packaged
+alongside the `.saver` bundle in the release zip by
+`.github/workflows/release.yml`'s macos job. It copies the bundle into
+`~/Library/Screen Savers` and runs `xattr -dr com.apple.quarantine` on the
+copy, which is the actual fix (Gatekeeper only objects to the quarantine
+flag on an ad-hoc-signed bundle, not the signature itself). The script will
+itself be quarantined after download, but as a plain shell script (not a
+signed Mach-O bundle) it gets Gatekeeper's *working* bypass path --
+right-click → Open once -- rather than the .saver's dead-end "damaged"
+message. Verified end-to-end locally: running the script installs a
+quarantine-free copy that Gatekeeper accepts.
 
 ## Verification gate (adapt from Windows/Linux)
 
@@ -204,7 +234,7 @@ above), and orphaned `legacyScreenSaver` host processes accumulating across
 activations (see above) -- neither affects the screensaver's actual
 functionality.
 
-No dedicated packaging beyond the raw `.saver` bundle yet (no DMG/installer,
-no notarization) — matches Windows/Linux both still being "copy the built
-artifact into place by hand" at this stage of the project, not a real
-distribution loose end unique to macOS.
+Release packaging exists as of `v1.0.1`: the `.saver` bundle plus
+`Install Glyph Rain.command` in one zip via CI (see "Distribution" above) --
+no DMG, no notarization (deliberately not pursued), but no longer just
+"copy the built artifact into place by hand" either.
