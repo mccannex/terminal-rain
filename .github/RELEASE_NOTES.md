@@ -23,11 +23,16 @@ download-safety UI — so fetching the release this way avoids the problem
 entirely instead of needing to work around it afterward.
 
 Open **Terminal** (Applications → Utilities → Terminal, or Spotlight search for
-"Terminal"), paste the block below as-is, and press Return. Each line is a
-separate, self-contained step — read through the comments (the `#` lines) to see
-exactly what it's doing before you run it:
+"Terminal"), paste the block below as-is, and press Return. It's wrapped in
+`bash <<'INSTALL_GLYPH_RAIN' ... INSTALL_GLYPH_RAIN` so it runs correctly no
+matter what shell or settings your Terminal happens to have (some default zsh
+setups don't treat `#` as a comment when text is pasted directly into an
+interactive prompt, which otherwise breaks a script like this one) — the
+block is still just plain shell underneath, and the comments (the `#` lines)
+explain what each step is doing before you run it:
 
 ```bash
+bash <<'INSTALL_GLYPH_RAIN'
 # Stop immediately if any step below fails, rather than pressing on with a
 # broken/partial install.
 set -e
@@ -36,11 +41,11 @@ set -e
 # behind afterward.
 d=$(mktemp -d)
 
-# Download the latest macOS build directly from this repo's GitHub Releases.
+# Download the latest macOS build directly from this GitHub repo's Releases.
 # Using curl (not a browser) is the whole point -- see the explanation above.
 curl -fsSL https://github.com/mccannex/glyph-rain/releases/latest/download/Glyph.Rain-macOS.zip -o "$d/glyphrain.zip"
 
-# Unzip it. ditto (Apple's own archive tool) is used instead of `unzip` because
+# Unzip it. ditto (Apple's own archive tool) is used instead of unzip because
 # it correctly preserves the .saver bundle's code signature and internal
 # structure.
 ditto -x -k "$d/glyphrain.zip" "$d"
@@ -54,6 +59,7 @@ cp -R "$d/Glyph Rain.saver" ~/Library/"Screen Savers"/
 rm -rf "$d"
 
 echo "Installed -- open System Settings > Screen Saver and select Glyph Rain."
+INSTALL_GLYPH_RAIN
 ```
 
 Then open **System Settings → Screen Saver** and select "Glyph Rain."

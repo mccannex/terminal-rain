@@ -106,16 +106,39 @@ button -- the older "right-click to open anyway" affordance most guidance
 online still describes no longer reliably applies. This just moved the
 Gatekeeper dead-end one level down rather than fixing it.
 
-**What actually shipped:** `.github/RELEASE_NOTES.md` gives a single `curl`
-command (`releases/latest/download/Glyph.Rain-macOS.zip`) that downloads,
-extracts, and installs the bundle in one line. `curl` never sets
-`com.apple.quarantine` in the first place -- only browsers do, as part of
-their own download-safety UI -- so this sidesteps Gatekeeper entirely rather
-than needing to bypass it after the fact. No script shipped in the release
-zip at all; `.github/workflows/release.yml`'s macos job packages just the
-bare `.saver` bundle again. Verified end-to-end live: running the documented
-`curl` command installs a copy with zero quarantine-related extended
-attributes, confirmed via `xattr -lr`.
+**What actually shipped:** `.github/RELEASE_NOTES.md` gives a commented,
+multi-line shell script that downloads, extracts, and installs the bundle.
+`curl` never sets `com.apple.quarantine` in the first place -- only browsers
+do, as part of their own download-safety UI -- so this sidesteps Gatekeeper
+entirely rather than needing to bypass it after the fact. No script shipped
+in the release zip at all; `.github/workflows/release.yml`'s macos job
+packages just the bare `.saver` bundle again.
+
+**Second bug, caught by actually testing the paste-into-Terminal flow (not
+just running the script as a file):** the commented version broke with a
+zsh parse error when pasted directly into an interactive shell (both
+Terminal.app and Warp). Root cause: `setopt interactivecomments` is off by
+default in zsh's *interactive* mode (unlike bash, and unlike zsh running an
+actual script file) -- confirmed via `zsh -i -c 'print $options
+[interactivecomments]'` → `off`. With it off, `#` is not a comment
+character when text is pasted into an interactive zsh prompt; the shell
+tries to run the comment text as a literal command instead, and one comment
+containing an apostrophe (`repo's`) opened an unterminated quoted string
+that swallowed subsequent lines until a real syntax error surfaced further
+down. Confirmed by reproducing the exact failure via `zsh -i -s < paste.txt`
+(piping the literal pasted text into an interactive-mode zsh), which is a
+meaningfully different code path from `bash script.sh` and is what actually
+needs testing for a "paste this into your terminal" instruction -- running
+it as a saved script file, which was verified first, does not exercise this
+bug at all.
+
+Fixed by wrapping the whole block in `bash <<'INSTALL_GLYPH_RAIN' ...
+INSTALL_GLYPH_RAIN`: the outer interactive shell (whatever it is, whatever
+its comment settings are) just buffers the heredoc's lines without parsing
+them, and hands the content to a real `bash` subprocess where `#` comments
+always work regardless. Re-verified via the same `zsh -i -s < paste.txt`
+reproduction -- installs cleanly, zero quarantine-related extended
+attributes on the result (confirmed via `xattr -lr`).
 
 ## Verification gate (adapt from Windows/Linux)
 
