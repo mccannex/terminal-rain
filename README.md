@@ -17,10 +17,10 @@ SDL2 with a platform-agnostic simulation core. Renamed from the original project
   for the full integration story.
 - **macOS**: a real `.saver` bundle (`src/macos_saver/GlyphRainView.mm`), built
   entirely with Command Line Tools (no Xcode.app required). Not notarized (no paid
-  Apple Developer Program membership) — a release download is Gatekeeper-quarantined
-  and needs the bundled `Install Glyph Rain.command` (double-click, or `right-click →
-  Open` once if macOS calls it "unidentified developer") to actually install it,
-  rather than dragging the `.saver` into `~/Library/Screen Savers` directly. One known
+  Apple Developer Program membership) — a browser-downloaded copy gets
+  Gatekeeper-quarantined and refused outright, so releases are meant to be fetched
+  with `curl` instead (see each release's notes for the exact one-line install
+  command), which never sets the quarantine flag in the first place. One known
   cosmetic limitation: the picker's small grid thumbnail shows a generic icon rather
   than the shipped preview image, believed to be an OS-level limitation of this macOS
   version's screensaver-hosting architecture. See

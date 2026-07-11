@@ -2,32 +2,58 @@
 
 - **Windows**: download `Glyph Rain.scr`. Right-click it and choose **Install**, or
   double-click to preview it first.
-- **macOS**: download `Glyph Rain-macOS.zip`, unzip it, then **run
-  `Install Glyph Rain.command`** (double-click it). Don't just drag
-  `Glyph Rain.saver` into `~/Library/Screen Savers` yourself — see why below.
+- **macOS**: paste a short script into Terminal — see below. Don't download the zip
+  through your browser first; that's what causes the "damaged" error some people hit.
 - **Linux**: `glyph_rain_dev` is the raw dev binary, not an installer yet — see
   [`platform/linux/AGENT_CONTEXT.md`](https://github.com/mccannex/glyph-rain/blob/main/platform/linux/AGENT_CONTEXT.md)
   for how it's wired into KDE's Power Management idle-script hook.
 
-### A note for macOS users: why the extra script?
+### macOS install
 
-This build isn't notarized by Apple — that requires a paid $99/year Developer Program
-membership, which this project doesn't use. If you try to install `Glyph Rain.saver`
-directly (drag it into `~/Library/Screen Savers` yourself), macOS will refuse to open
-it and show a misleading error:
+**Why not just download the zip normally?** This build isn't notarized by Apple
+(notarization requires a paid $99/year Developer Program membership, deliberately
+not used for this project). A file downloaded through a browser gets tagged with a
+`com.apple.quarantine` flag, and Gatekeeper refuses to open anything quarantined
+that isn't signed with a real Apple Developer identity — showing a misleading
+"is damaged and can't be opened" error. Nothing is actually broken; that's
+Gatekeeper rejecting the quarantine flag itself, not a corrupt file.
 
-> "Glyph Rain.saver" is damaged and can't be opened. You should move it to the Trash.
+`curl` never sets that flag — only browsers do, as part of their own
+download-safety UI — so fetching the release this way avoids the problem
+entirely instead of needing to work around it afterward.
 
-Nothing is actually broken. That's Gatekeeper rejecting an unsigned bundle that was
-downloaded from the internet — not real file corruption.
+Open **Terminal** (Applications → Utilities → Terminal, or Spotlight search for
+"Terminal"), paste the block below as-is, and press Return. Each line is a
+separate, self-contained step — read through the comments (the `#` lines) to see
+exactly what it's doing before you run it:
 
-`Install Glyph Rain.command` fixes this for you: it copies the bundle into
-`~/Library/Screen Savers` and clears the specific flag that's actually causing the
-problem. Two things to expect:
+```bash
+# Stop immediately if any step below fails, rather than pressing on with a
+# broken/partial install.
+set -e
 
-1. The **first time** you double-click the script itself, macOS will probably also
-   flag *it* as being from an "unidentified developer." Right-click the script and
-   choose **Open** (instead of double-clicking) to get past that one-time prompt —
-   after that it runs normally.
-2. Once it finishes, open **System Settings → Screen Saver** and select "Glyph Rain"
-   from the picker.
+# Make a scratch directory to download and unzip into, so nothing gets left
+# behind afterward.
+d=$(mktemp -d)
+
+# Download the latest macOS build directly from this repo's GitHub Releases.
+# Using curl (not a browser) is the whole point -- see the explanation above.
+curl -fsSL https://github.com/mccannex/glyph-rain/releases/latest/download/Glyph.Rain-macOS.zip -o "$d/glyphrain.zip"
+
+# Unzip it. ditto (Apple's own archive tool) is used instead of `unzip` because
+# it correctly preserves the .saver bundle's code signature and internal
+# structure.
+ditto -x -k "$d/glyphrain.zip" "$d"
+
+# macOS scans ~/Library/Screen Savers for installed screensavers -- create it
+# if it doesn't already exist, then copy the bundle there.
+mkdir -p ~/Library/"Screen Savers"
+cp -R "$d/Glyph Rain.saver" ~/Library/"Screen Savers"/
+
+# Clean up the scratch directory now that the bundle's been copied out of it.
+rm -rf "$d"
+
+echo "Installed -- open System Settings > Screen Saver and select Glyph Rain."
+```
+
+Then open **System Settings → Screen Saver** and select "Glyph Rain."
