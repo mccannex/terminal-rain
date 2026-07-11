@@ -47,6 +47,11 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
     int motionEventCount = 0;
     const int motionEventThreshold = 2;
 
+    // Preview mode is a small embedded thumbnail in someone else's dialog,
+    // not an exclusive fullscreen surface -- leave the system cursor alone
+    // there. SDL_ShowCursor is a process-global setting, not per-window.
+    if (!isPreview) SDL_ShowCursor(SDL_DISABLE);
+
     bool running = true;
     SDL_Event event;
     while (running)
@@ -69,6 +74,8 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
 
         SDL_Delay(50); // matches the original's WM_TIMER interval
     }
+
+    if (!isPreview) SDL_ShowCursor(SDL_ENABLE);
 
     SDL_DestroyTexture(atlas);
     SDL_DestroyRenderer(renderer);
@@ -153,6 +160,11 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
     int motionEventCount = 0;
     const int motionEventThreshold = 2;
 
+    // This entry point is only ever the real fullscreen show (never the
+    // Windows /p preview), so the system cursor is always hidden here.
+    // SDL_ShowCursor is a process-global setting, not per-window.
+    SDL_ShowCursor(SDL_DISABLE);
+
     bool running = true;
     SDL_Event event;
     while (running)
@@ -177,6 +189,8 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
 
         SDL_Delay(50); // matches the original's WM_TIMER interval
     }
+
+    SDL_ShowCursor(SDL_ENABLE);
 
     for (DisplayInstance& instance : instances)
     {
