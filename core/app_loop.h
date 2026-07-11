@@ -30,8 +30,11 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale = 1.0f)
 //
 // getContentScale: optional per-display scale lookup, called once per
 // display with SDL's display index; return 1.0 for no scaling if omitted.
-// Kept as a callback rather than a core/ dependency so platform-specific
-// scale queries (e.g. Linux/KDE's D-Bus lookup in
-// src/sdl_app/kde_display_scale.*) don't need to live in core/, which is
-// shared with the Windows build.
+// Kept as a callback rather than a core/ dependency so a platform-specific
+// scale query wouldn't need to live in core/, which is shared with the
+// Windows build -- currently unused on both Windows and Linux, since a
+// window's drawable size already differs from its logical size by the
+// compositor's real per-output scale under both platforms' HiDPI handling,
+// and runMultiDisplayStreamLoop's own draw-then-stretch-on-present already
+// applies that automatically (see src/sdl_app/main.cpp).
 int runMultiDisplayStreamLoop(std::function<float(int displayIndex)> getContentScale = nullptr);

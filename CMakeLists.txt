@@ -31,23 +31,6 @@ target_include_directories(glyph_rain_core PUBLIC ${CMAKE_SOURCE_DIR})
 add_executable(glyph_rain_dev src/sdl_app/main.cpp)
 target_link_libraries(glyph_rain_dev PRIVATE glyph_rain_core SDL2::SDL2-static SDL2::SDL2main)
 
-if(NOT WIN32)
-    # KDE per-output display-scale query (src/sdl_app/kde_display_scale.cpp)
-    # talks to KWin over D-Bus via sd-bus -- Linux/KDE-specific, so it's kept
-    # out of glyph_rain_core (which Windows also links) and only added here.
-    target_sources(glyph_rain_dev PRIVATE src/sdl_app/kde_display_scale.cpp)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SDBUS REQUIRED IMPORTED_TARGET libsystemd)
-    target_link_libraries(glyph_rain_dev PRIVATE PkgConfig::SDBUS)
-else()
-    # src/sdl_app/main.cpp (shared with the Linux/WSL dev binary) calls
-    # queryKdeOutputScale() unconditionally -- it's documented as safe to
-    # call on any platform, always falling back to 1.0 outside a live Plasma
-    # session. This trivial stub keeps that contract true on Windows, which
-    # has no KWin/D-Bus to query in the first place.
-    target_sources(glyph_rain_dev PRIVATE src/sdl_app/kde_display_scale_stub.cpp)
-endif()
-
 # Only deploy the default config if the user doesn't already have one next
 # to the exe -- rebuilds must never clobber a user's edited matrix.cfg.
 # glyph_rain_dev (the dev/WSL sanity binary) keeps this for quick tuning
