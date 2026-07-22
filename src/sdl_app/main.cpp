@@ -28,7 +28,7 @@ int main(int /*argc*/, char* /*argv*/[])
     // stretches to fill the full drawable on present -- that stretch already
     // applies the right per-monitor scale automatically, so an explicit
     // contentScale multiplier on top would double it. Same reasoning the
-    // Windows build already relies on (src/win32/main.cpp).
+    // Windows build already relies on (platform/windows/main.cpp).
     int result = runMultiDisplayStreamLoop();
 
     SDL_Quit();
