@@ -82,7 +82,7 @@ Open, non-blocking:
 
 - No dedicated Linux packaging target — the powerdevil script still points
   at the `glyph_rain_dev` dev binary directly, unlike Windows'
-  `src/win32/main.cpp` → `.scr` split.
+  `platform/windows/main.cpp` → `.scr` split.
 - Idea only, not started: a user-configurable "master scale" multiplier on
   top of the per-monitor auto-scaling (the laptop panel's normalized size
   runs slightly larger than preferred).

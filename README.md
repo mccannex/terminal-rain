@@ -7,7 +7,7 @@ SDL2 with a platform-agnostic simulation core. Renamed from the original project
 
 ## Platforms
 
-- **Windows**: a real `.scr` screensaver shell (`src/win32/main.cpp`) — installs via
+- **Windows**: a real `.scr` screensaver shell (`platform/windows/main.cpp`) — installs via
   the standard `/s /c /p /a` command-line convention, appears in the Display Settings
   screensaver picker with a live preview thumbnail, multi-monitor aware.
 - **Linux (Fedora/KDE Plasma, Wayland)**: no `.scr`-equivalent convention exists, so
@@ -15,7 +15,7 @@ SDL2 with a platform-agnostic simulation core. Renamed from the original project
   action instead. Multi-monitor aware, with glyph size normalized to KDE's per-output
   display scale. See [`platform/linux/AGENT_CONTEXT.md`](platform/linux/AGENT_CONTEXT.md)
   for the full integration story.
-- **macOS**: a real `.saver` bundle (`src/macos_saver/GlyphRainView.mm`), built
+- **macOS**: a real `.saver` bundle (`platform/macos/GlyphRainView.mm`), built
   entirely with Command Line Tools (no Xcode.app required). Not notarized (no paid
   Apple Developer Program membership) — a browser-downloaded copy gets
   Gatekeeper-quarantined and refused outright, so releases are meant to be fetched

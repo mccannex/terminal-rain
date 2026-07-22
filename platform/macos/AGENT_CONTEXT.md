@@ -15,7 +15,7 @@ targets. See the root `README.md` for licensing/credits, and
 
 ## Architecture
 
-The macOS target (`src/macos_saver/GlyphRainView.mm`, CMake target
+The macOS target (`platform/macos/GlyphRainView.mm`, CMake target
 `glyph_rain_saver`) is a `.saver` bundle: a loadable `NSBundle` plugin hosted
 by `legacyScreenSaver.appex`, not a standalone app like the Windows `.scr` or
 Linux binary. Key decisions, all still in force:

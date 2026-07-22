@@ -1,8 +1,8 @@
 #include <SDL.h>
 #include <cstdlib>
-#include "../../core/app_loop.h"
+#include "core/app_loop.h"
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* /*argv*/[])
 {
     // Force native Wayland: SDL's auto-detection picks x11 (XWayland) on this
     // machine even with a live Wayland session available, and XWayland
