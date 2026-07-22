@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates src/macos_saver/thumbnail.png and thumbnail@2x.png -- the static
+"""Generates platform/macos/thumbnail.png and thumbnail@2x.png -- the static
 image System Settings' Screen Saver picker grid shows per module. Unlike the
 larger "selected" preview canvas (which does animate the real
 ScreenSaverView), the grid tile for a legacy .saver bundle does not render

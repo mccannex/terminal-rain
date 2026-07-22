@@ -298,7 +298,7 @@ static BOOL screenIsLocked(void)
     SDL_RenderPresent(_renderer);
 }
 
-// No settings are configurable yet, mirroring src/win32/main.cpp's
+// No settings are configurable yet, mirroring platform/windows/main.cpp's
 // runConfigure stub -- once that changes, build the sheet's UI in code
 // rather than a XIB, since Interface Builder's compiler (ibtool) isn't
 // available outside full Xcode. See platform/macos/AGENT_CONTEXT.md.
