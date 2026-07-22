@@ -86,7 +86,8 @@ if(APPLE)
     add_library(glyph_rain_saver MODULE src/macos_saver/GlyphRainView.mm ${macos_saver_thumbnails})
     target_compile_options(glyph_rain_saver PRIVATE -fobjc-arc)
     target_link_libraries(glyph_rain_saver PRIVATE
-        glyph_rain_core SDL2::SDL2-static "-framework Cocoa" "-framework ScreenSaver")
+        glyph_rain_core SDL2::SDL2-static "-framework Cocoa" "-framework ScreenSaver"
+        "-framework CoreGraphics")
     set_target_properties(glyph_rain_saver PROPERTIES
         OUTPUT_NAME "Glyph Rain"
         BUNDLE TRUE
