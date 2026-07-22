@@ -4,7 +4,7 @@
 #include <SDL_syswm.h>
 #include <cctype>
 #include <string>
-#include "../../core/app_loop.h"
+#include "core/app_loop.h"
 
 // Standard Win32 screensaver command-line convention (4.0+):
 //   /s          run fullscreen (the actual screensaver)

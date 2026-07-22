@@ -3,11 +3,9 @@
 #import <os/log.h>
 #include <SDL.h>
 #include <cstdlib>
-#include <ctime>
 #include <unistd.h>
-#include "../../core/glyph_atlas.h"
-#include "../../core/stream_field.h"
-#include "../../core/config.h"
+#include "core/glyph_atlas.h"
+#include "core/stream_field.h"
 
 // legacyScreenSaver (the host process System Settings' screensaver picker
 // launches) is *supposed* to own idle-activation/teardown-on-input at the
@@ -179,7 +177,6 @@ static BOOL screenIsLocked(void)
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        srand(static_cast<unsigned int>(time(nullptr)));
         // SDL_Init defaults to disabling the OS's idle/screensaver detection
         // (an IOPMAssertion named "using SDL_DisableScreenSaver") -- meant
         // to stop games from being interrupted by some *other* screensaver,
@@ -214,11 +211,12 @@ static BOOL screenIsLocked(void)
     int width, height;
     SDL_GetWindowSize(_window, &width, &height);
 
-    // No bundled matrix.cfg (same call as Windows' shipped glyph_rain target
-    // -- see the CMakeLists.txt comment by its copy_if_missing step): this
-    // just falls through to loadConfig's compiled-in defaults.
-    StreamFieldConfig config = loadConfig("matrix.cfg");
-    _field = new StreamField(_renderer, _atlas, width, height, config);
+    // Simulation tunables are compile-time constants (core/stream_field.h);
+    // the .saver ships no runtime config file. contentScale stays at its 1.0
+    // default -- SDL's Cocoa backend already handles Retina drawable scaling.
+    _field = new StreamField(_renderer, _atlas, width, height);
+    os_log(saverLog(), "stream field: %dx%d, streamCap=%d",
+           width, height, _field->streamCap());
 }
 
 - (void)teardown

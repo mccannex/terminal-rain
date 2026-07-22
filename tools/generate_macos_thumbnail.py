@@ -38,7 +38,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 FONT_PATH = ROOT / "assets" / "fonts" / "TerminalVector.ttf"
-OUT_DIR = ROOT / "src" / "macos_saver"
+OUT_DIR = ROOT / "platform" / "macos"
 
 GLYPHS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 WORD = "GLYPHRAIN"

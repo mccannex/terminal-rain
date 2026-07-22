@@ -1,30 +1,105 @@
 #include "app_loop.h"
 #include "glyph_atlas.h"
 #include "stream_field.h"
-#include "config.h"
-#include <cstdlib>
-#include <ctime>
+#include <utility>
 #include <vector>
+
+namespace
+{
+    // Matches the original's WM_TIMER interval. The other platforms' cadence
+    // (SDL) is driven from here; macOS uses ScreenSaverView's own timer.
+    constexpr Uint32 kFrameIntervalMs = 50;
+
+    // A spurious mouse-motion event is commonly synthesized by the window
+    // manager right when a window is created/focused, so require more than a
+    // couple of motion events before treating it as real user input -- same
+    // debounce the original Win32 version used.
+    constexpr int kMotionEventThreshold = 2;
+
+    SDL_Renderer* createRenderer(SDL_Window* window)
+    {
+        SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+        if (!renderer) renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+        if (!renderer) SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+        return renderer;
+    }
+
+    // Drains SDL's (process-wide) event queue and reports whether the loop
+    // should stop: on SDL_QUIT, or real mouse motion past the debounce.
+    // Preview windows ignore motion -- their lifetime is owned by the host
+    // dialog, and the cursor merely passing over a small thumbnail shouldn't
+    // dismiss it.
+    bool shouldStop(bool isPreview, int& motionCount)
+    {
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_QUIT) return true;
+            if (!isPreview && event.type == SDL_MOUSEMOTION)
+            {
+                if (++motionCount > kMotionEventThreshold) return true;
+            }
+        }
+        return false;
+    }
+
+    // Sleeps out the remainder of a frame's target interval, accounting for
+    // how long the frame's own work took (a bare SDL_Delay(50) would make the
+    // real period 50ms + work, drifting slower under load).
+    void paceFrame(Uint32 frameStartMs)
+    {
+        Uint32 elapsed = SDL_GetTicks() - frameStartMs;
+        if (elapsed < kFrameIntervalMs) SDL_Delay(kFrameIntervalMs - elapsed);
+    }
+
+    // Owns everything one display's simulation needs, and tears it down in
+    // destruction order (field, then atlas/renderer/window). Move-only, so a
+    // half-built instance whose scope exits early (a mid-setup `continue`)
+    // cleans up its partial resources automatically.
+    struct DisplayInstance
+    {
+        SDL_Window* window = nullptr;
+        SDL_Renderer* renderer = nullptr;
+        SDL_Texture* atlas = nullptr;
+        StreamField* field = nullptr;
+
+        DisplayInstance() = default;
+        DisplayInstance(const DisplayInstance&) = delete;
+        DisplayInstance& operator=(const DisplayInstance&) = delete;
+        DisplayInstance(DisplayInstance&& other) noexcept { *this = std::move(other); }
+        DisplayInstance& operator=(DisplayInstance&& other) noexcept
+        {
+            if (this != &other)
+            {
+                reset();
+                window = other.window;
+                renderer = other.renderer;
+                atlas = other.atlas;
+                field = other.field;
+                other.window = nullptr;
+                other.renderer = nullptr;
+                other.atlas = nullptr;
+                other.field = nullptr;
+            }
+            return *this;
+        }
+        ~DisplayInstance() { reset(); }
+
+        void reset()
+        {
+            delete field;
+            field = nullptr;
+            if (atlas) { SDL_DestroyTexture(atlas); atlas = nullptr; }
+            if (renderer) { SDL_DestroyRenderer(renderer); renderer = nullptr; }
+            if (window) { SDL_DestroyWindow(window); window = nullptr; }
+        }
+    };
+}
 
 int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
 {
-    static bool seeded = false;
-    if (!seeded)
-    {
-        srand(static_cast<unsigned int>(time(nullptr)));
-        seeded = true;
-    }
-
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer)
-    {
-        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-    }
-    if (!renderer)
-    {
-        SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
-        return 1;
-    }
+    SDL_Renderer* renderer = createRenderer(window);
+    if (!renderer) return 1;
 
     SDL_Texture* atlas = loadGlyphAtlas(renderer);
     if (!atlas)
@@ -35,44 +110,24 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
 
     int windowWidth, windowHeight;
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-
-    StreamFieldConfig config = loadConfig("matrix.cfg");
-    config.contentScale = contentScale;
-    StreamField field(renderer, atlas, windowWidth, windowHeight, config);
-
-    // A spurious mouse-motion event is commonly synthesized by the window
-    // manager right when the window is created/focused. Require more than
-    // a couple of motion events before treating it as real user input, same
-    // debounce the original Win32 version used.
-    int motionEventCount = 0;
-    const int motionEventThreshold = 2;
+    StreamField field(renderer, atlas, windowWidth, windowHeight, contentScale);
 
     // Preview mode is a small embedded thumbnail in someone else's dialog,
     // not an exclusive fullscreen surface -- leave the system cursor alone
     // there. SDL_ShowCursor is a process-global setting, not per-window.
     if (!isPreview) SDL_ShowCursor(SDL_DISABLE);
 
-    bool running = true;
-    SDL_Event event;
-    while (running)
+    int motionCount = 0;
+    while (!shouldStop(isPreview, motionCount))
     {
-        while (SDL_PollEvent(&event))
-        {
-            if (event.type == SDL_QUIT) running = false;
-            if (!isPreview && event.type == SDL_MOUSEMOTION)
-            {
-                motionEventCount++;
-                if (motionEventCount > motionEventThreshold) running = false;
-            }
-        }
+        Uint32 frameStart = SDL_GetTicks();
 
         field.tick();
-
         SDL_SetRenderTarget(renderer, nullptr);
         SDL_RenderCopy(renderer, field.targetTexture(), nullptr, nullptr);
         SDL_RenderPresent(renderer);
 
-        SDL_Delay(50); // matches the original's WM_TIMER interval
+        paceFrame(frameStart);
     }
 
     if (!isPreview) SDL_ShowCursor(SDL_ENABLE);
@@ -82,107 +137,62 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
     return 0;
 }
 
-namespace
-{
-    struct DisplayInstance
-    {
-        SDL_Window* window = nullptr;
-        SDL_Renderer* renderer = nullptr;
-        SDL_Texture* atlas = nullptr;
-        StreamField* field = nullptr;
-    };
-}
-
 int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
 {
-    static bool seeded = false;
-    if (!seeded)
-    {
-        srand(static_cast<unsigned int>(time(nullptr)));
-        seeded = true;
-    }
-
     int displayCount = SDL_GetNumVideoDisplays();
     if (displayCount < 1) displayCount = 1;
-
-    StreamFieldConfig baseConfig = loadConfig("matrix.cfg");
 
     std::vector<DisplayInstance> instances;
     instances.reserve(displayCount);
 
     for (int i = 0; i < displayCount; ++i)
     {
+        DisplayInstance instance;
+
         // SDL2's standard idiom for "fullscreen on a specific display": an
         // undefined position scoped to that display index, plus the
         // FULLSCREEN_DESKTOP flag, which then sizes the window to that
-        // display's actual desktop resolution automatically.
-        // ALWAYS_ON_TOP is needed on top of FULLSCREEN_DESKTOP because KDE
-        // panels set to "Always Visible" are designed to stay above normal
-        // fullscreen windows -- only windows requesting the WM's "above"
-        // layer get to cover them.
-        SDL_Window* window = SDL_CreateWindow(
+        // display's actual desktop resolution automatically. ALWAYS_ON_TOP is
+        // needed on top of FULLSCREEN_DESKTOP because KDE panels set to
+        // "Always Visible" are designed to stay above normal fullscreen
+        // windows -- only windows requesting the WM's "above" layer cover them.
+        instance.window = SDL_CreateWindow(
             "Glyph Rain",
             SDL_WINDOWPOS_UNDEFINED_DISPLAY(i), SDL_WINDOWPOS_UNDEFINED_DISPLAY(i),
             1024, 768,
             SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_ALLOW_HIGHDPI |
                 SDL_WINDOW_ALWAYS_ON_TOP);
-        if (!window) continue;
+        if (!instance.window) continue;
 
-        SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-        if (!renderer) renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-        if (!renderer)
-        {
-            SDL_DestroyWindow(window);
-            continue;
-        }
+        instance.renderer = createRenderer(instance.window);
+        if (!instance.renderer) continue; // instance's dtor frees the window
 
-        SDL_Texture* atlas = loadGlyphAtlas(renderer);
-        if (!atlas)
-        {
-            SDL_DestroyRenderer(renderer);
-            SDL_DestroyWindow(window);
-            continue;
-        }
+        instance.atlas = loadGlyphAtlas(instance.renderer);
+        if (!instance.atlas) continue;    // dtor frees renderer + window
 
         int windowWidth, windowHeight;
-        SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+        SDL_GetWindowSize(instance.window, &windowWidth, &windowHeight);
+        float contentScale = getContentScale ? getContentScale(i) : 1.0f;
+        instance.field = new StreamField(instance.renderer, instance.atlas,
+                                         windowWidth, windowHeight, contentScale);
 
-        StreamFieldConfig config = baseConfig;
-        config.contentScale = getContentScale ? getContentScale(i) : 1.0f;
-
-        DisplayInstance instance;
-        instance.window = window;
-        instance.renderer = renderer;
-        instance.atlas = atlas;
-        instance.field = new StreamField(renderer, atlas, windowWidth, windowHeight, config);
-        instances.push_back(instance);
+        instances.push_back(std::move(instance));
     }
 
     if (instances.empty()) return 1;
-
-    // Shared across every window: real mouse movement on any one display
-    // closes all of them together, not just that one.
-    int motionEventCount = 0;
-    const int motionEventThreshold = 2;
 
     // This entry point is only ever the real fullscreen show (never the
     // Windows /p preview), so the system cursor is always hidden here.
     // SDL_ShowCursor is a process-global setting, not per-window.
     SDL_ShowCursor(SDL_DISABLE);
 
-    bool running = true;
-    SDL_Event event;
-    while (running)
+    // One shared debounce across every window: real mouse movement on any
+    // display closes all of them together (SDL's event queue is already
+    // process-wide, so a single poll covers every window).
+    int motionCount = 0;
+    while (!shouldStop(false, motionCount))
     {
-        while (SDL_PollEvent(&event))
-        {
-            if (event.type == SDL_QUIT) running = false;
-            if (event.type == SDL_MOUSEMOTION)
-            {
-                motionEventCount++;
-                if (motionEventCount > motionEventThreshold) running = false;
-            }
-        }
+        Uint32 frameStart = SDL_GetTicks();
 
         for (DisplayInstance& instance : instances)
         {
@@ -192,18 +202,9 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
             SDL_RenderPresent(instance.renderer);
         }
 
-        SDL_Delay(50); // matches the original's WM_TIMER interval
+        paceFrame(frameStart);
     }
 
     SDL_ShowCursor(SDL_ENABLE);
-
-    for (DisplayInstance& instance : instances)
-    {
-        delete instance.field;
-        SDL_DestroyTexture(instance.atlas);
-        SDL_DestroyRenderer(instance.renderer);
-        SDL_DestroyWindow(instance.window);
-    }
-
-    return 0;
+    return 0; // instances' destructors tear down every window/renderer/atlas/field
 }
