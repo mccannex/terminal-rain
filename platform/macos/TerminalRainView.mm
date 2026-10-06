@@ -3,6 +3,8 @@
 #import <os/log.h>
 #include <SDL.h>
 #include <cstdlib>
+#include <chrono>
+#include "zombie_confirmation.h"
 #include <unistd.h>
 #include "core/glyph_atlas.h"
 #include "core/stream_field.h"
@@ -37,7 +39,7 @@
 //    this reflects the user's physical input activity regardless of where
 //    (or whether) the window server routes the events. If fresh input shows
 //    up while we're still animating, a healthy host would have dismissed us
-//    within about a second; still animating kZombieConfirmSeconds later
+//    within about a second; still animating two seconds after confirmation begins
 //    means the host is gone. Suspended while the screen is locked, because
 //    the system may legitimately keep a saver animating behind the unlock
 //    prompt while the user types their password -- exactly the input
@@ -58,19 +60,12 @@
 // debounce (runMultiDisplayStreamLoop) exists to avoid on Windows/Linux.
 static const NSTimeInterval kWatchdogTimeoutSeconds = 4 * 60 * 60; // 4 hours
 
-// Ignore input from the first moments of animation: a hot-corner or
-// Settings-button activation begins with the user's hand still on the
-// mouse, so input shortly after start is normal and must not count as
-// "input the host failed to act on".
-static const NSTimeInterval kStartupGraceSeconds = 5.0;
-
-// How long we keep animating after fresh user input before concluding the
-// host is dead. A healthy dismissal lands within ~a second of input (and on
-// a macOS where the host does deliver -stopAnimation, the animation timer
-// stops and this countdown never even gets evaluated), so 2s is already
-// double the legitimate window. Verified live: the dismissing input's host
-// engine was gone well under a second after the event.
-static const NSTimeInterval kZombieConfirmSeconds = 2.0;
+// Use elapsed time independent of wall-clock adjustments for both defenses.
+static double monotonicSeconds()
+{
+    return std::chrono::duration<double>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 
 // Heartbeat log cadence in frames (~every 10s at the 20fps tick rate).
 static const uint64_t kHeartbeatFrames = 200;
@@ -103,7 +98,8 @@ static BOOL screenIsLocked(void)
     SDL_Renderer* _renderer;
     SDL_Texture* _atlas;
     StreamField* _field;
-    CFAbsoluteTime _animationStartTime;
+    double _animationStartTime;
+    ZombieConfirmation _zombieConfirmation;
     uint64_t _frameCount;
     BOOL _permanentlyStopped;
 }
@@ -134,7 +130,8 @@ static BOOL screenIsLocked(void)
 {
     [super startAnimation];
 
-    _animationStartTime = CFAbsoluteTimeGetCurrent();
+    _animationStartTime = monotonicSeconds();
+    _zombieConfirmation.start(_animationStartTime);
     _frameCount = 0;
     _permanentlyStopped = NO;
 
@@ -150,6 +147,7 @@ static BOOL screenIsLocked(void)
 {
     os_log(saverLog(), "stopAnimation: view=%p pid=%d frames=%llu",
            self, getpid(), _frameCount);
+    _zombieConfirmation.stop();
     [super stopAnimation];
     [self teardown];
 }
@@ -255,7 +253,7 @@ static BOOL screenIsLocked(void)
 {
     if (_permanentlyStopped) return;
 
-    CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+    double now = monotonicSeconds();
     _frameCount++;
 
     // Watchdog: see defense 2 in the file-level comment. Checked before any
@@ -267,32 +265,19 @@ static BOOL screenIsLocked(void)
         return;
     }
 
-    // Zombie check: see defense 1 in the file-level comment. Deliberately
-    // retroactive -- "did input happen more than kZombieConfirmSeconds ago
-    // that we're somehow still animating through?" -- rather than watching
-    // for input as it arrives. The session's screen-locked flag can stay
-    // set for several seconds *after* a dismissal, so a single blip of
-    // dismissing input (during which this check must stand down, see
-    // screenIsLocked) would be missed entirely by an edge-triggered
-    // version; observed live. This form catches it on the first unlocked
-    // frame instead, with no further input needed. self.isPreview mirrors
-    // core/app_loop.cpp's isPreview handling: a Preview thumbnail animates
-    // *while* the user mouses around Settings, so input-while-animating is
-    // its normal operating condition, not a stuck host.
+    // Latch qualifying input so continued typing cannot move the deadline.
+    // On unlock, re-read HID age: this retains a single dismissing event even
+    // when the lock flag clears late. Locked frames cancel confirmation, and
+    // unlock starts a full confirmation window to protect password entry.
     CFTimeInterval hidIdle = CGEventSourceSecondsSinceLastEventType(
         kCGEventSourceStateHIDSystemState, kCGAnyInputEventType);
-    if (!self.isPreview && !screenIsLocked())
+    BOOL locked = screenIsLocked();
+    if (_zombieConfirmation.update(now, hidIdle, locked, self.isPreview))
     {
-        CFAbsoluteTime lastInputTime = now - hidIdle;
-        if (lastInputTime > _animationStartTime + kStartupGraceSeconds &&
-            now - lastInputTime > kZombieConfirmSeconds)
-        {
-            os_log(saverLog(),
-                   "user input %.2fs ago never dismissed us", hidIdle);
-            [self terminateScreenSaverProcessBecause:
-                      "still animating well after user input; host is gone"];
-            return;
-        }
+        os_log(saverLog(), "qualifying user input never dismissed us (HID idle %.2fs)", hidIdle);
+        [self terminateScreenSaverProcessBecause:
+                  "still animating after confirmed user input; host is gone"];
+        return;
     }
 
     if (_frameCount % kHeartbeatFrames == 1)
@@ -301,7 +286,7 @@ static BOOL screenIsLocked(void)
                "heartbeat: view=%p frames=%llu hidIdle=%.2f locked=%d "
                "ppid=%d preview=%d",
                self, _frameCount, hidIdle,
-               screenIsLocked(), getppid(), self.isPreview);
+               locked, getppid(), self.isPreview);
     }
 
     if (!_window) [self setUpIfNeeded];
