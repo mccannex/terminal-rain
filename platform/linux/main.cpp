@@ -15,6 +15,8 @@ int main(int /*argc*/, char* /*argv*/[])
     // explicit SDL_VIDEODRIVER from the caller always wins (overwrite = 0).
     if (std::getenv("WAYLAND_DISPLAY")) setenv("SDL_VIDEODRIVER", "wayland", 0);
 
+    // Leave display sleep and the desktop's idle policy enabled while running.
+    SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
         SDL_Log("SDL_Init failed: %s", SDL_GetError());
