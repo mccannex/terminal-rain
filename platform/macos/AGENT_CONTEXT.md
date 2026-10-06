@@ -106,7 +106,7 @@ Debugging aids:
 
 ```bash
 brew install cmake        # SDL2 is vendored via FetchContent, no brew sdl2
-cmake -S . -B build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target terminal_rain_saver
 rm -rf ~/Library/Screen\ Savers/Terminal\ Rain.saver && cp -R "build/Terminal Rain.saver" ~/Library/Screen\ Savers/
 ```
