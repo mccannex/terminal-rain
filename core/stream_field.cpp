@@ -174,34 +174,50 @@ bool StreamField::render()
 
         const int px = s.col * glyphW_;
         const int headPy = s.headRow * glyphH_;
+        const auto visible = [this](int py)
+        {
+            return py < surfaceHeight_ && py + glyphH_ > 0;
+        };
+        const auto eraseCell = [&](int py)
+        {
+            if (visible(py)) blackCells_.push_back({ px, py, glyphW_, glyphH_ });
+        };
 
         // Opaque black cell-fills: head cell, the dim cell one row up, and the
         // two erase points behind the head (one randomized within the leading
         // window, one fixed at kBackTrace -- the guaranteed wipe). Queued now,
         // flushed together below before any glyph is drawn.
         const int randomErase = rng_.below(kSpacePad + 1) + kLeading;
-        blackCells_.push_back({ px, headPy, glyphW_, glyphH_ });
-        blackCells_.push_back({ px, headPy - glyphH_, glyphW_, glyphH_ });
-        blackCells_.push_back({ px, headPy - randomErase * glyphH_, glyphW_, glyphH_ });
-        blackCells_.push_back({ px, headPy - kBackTrace * glyphH_, glyphW_, glyphH_ });
+        eraseCell(headPy);
+        eraseCell(headPy - glyphH_);
+        eraseCell(headPy - randomErase * glyphH_);
+        eraseCell(headPy - kBackTrace * glyphH_);
+
+        // Consume the same random choices even when a glyph is invisible,
+        // preserving future visible animation. Below-screen heads still have
+        // visible trailing erases, so only cull individual cells, not streams.
+        const int headGlyph = 1 + rng_.below(glyphChoices);
+        const int dimGlyph = 1 + rng_.below(glyphChoices);
 
         // Head: brightest; slower streams (higher advanceDelay) are dimmer.
         const Uint8 headR = static_cast<Uint8>(kHeadR - s.advanceDelay * kHeadIncR);
         const Uint8 headG = static_cast<Uint8>(kHeadG - s.advanceDelay * kHeadIncG);
         const Uint8 headB = static_cast<Uint8>(kHeadB - s.advanceDelay * kHeadIncB);
-        glyphDraws_.push_back({ { px, headPy, glyphW_, glyphH_ },
-                                1 + rng_.below(glyphChoices),
-                                static_cast<uint32_t>((headR << 16) | (headG << 8) | headB),
-                                headR, headG, headB });
+        if (visible(headPy))
+            glyphDraws_.push_back({ { px, headPy, glyphW_, glyphH_ },
+                                    headGlyph,
+                                    static_cast<uint32_t>((headR << 16) | (headG << 8) | headB),
+                                    headR, headG, headB });
 
         // Trailing dim glyph one row up.
         const Uint8 dimR = static_cast<Uint8>(kDimBaseR - s.advanceDelay * kDimIncR);
         const Uint8 dimG = static_cast<Uint8>(kDimBaseG - s.advanceDelay * kDimIncG);
         const Uint8 dimB = static_cast<Uint8>(kDimBaseB - s.advanceDelay * kDimIncB);
-        glyphDraws_.push_back({ { px, headPy - glyphH_, glyphW_, glyphH_ },
-                                1 + rng_.below(glyphChoices),
-                                static_cast<uint32_t>((dimR << 16) | (dimG << 8) | dimB),
-                                dimR, dimG, dimB });
+        if (visible(headPy - glyphH_))
+            glyphDraws_.push_back({ { px, headPy - glyphH_, glyphW_, glyphH_ },
+                                    dimGlyph,
+                                    static_cast<uint32_t>((dimR << 16) | (dimG << 8) | dimB),
+                                    dimR, dimG, dimB });
     }
 
     // Pass 1: every opaque black fill in one batched call. Matching GDI's
