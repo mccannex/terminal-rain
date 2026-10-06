@@ -91,9 +91,13 @@ Open, non-blocking:
 - The 2026-10-06 Windows/shared-core pass enabled the allow-screensaver hint
   here and added clean shutdown on drawing failure or renderer reset, plus
   off-screen culling. Linux CI now selects Release explicitly and runs the
-  portable rendering checks. Native Linux build, idle activation, display
-  sleep/wake, mixed-DPI output, and dismissal still need rechecking after
-  these changes; the older live verification above predates them.
+  portable rendering checks. In the subsequent cross-machine follow-up, the
+  user explicitly tested the updated saver on native Wayland with monitor
+  shutdown timeouts: the monitors powered off while it ran, and moving the
+  mouse restored the desktops as expected. This confirms the display-off and
+  wake/dismissal portion of issue #6 on that session. Automatic idle-hook
+  activation and mixed-DPI output were not separately reported in this follow-up;
+  the older live verification above predates the optimization changes.
 
 - The X11 fallback has never run on a real X11 session.
 - No packaging (no .rpm/.deb or install script); the powerdevil script

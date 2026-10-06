@@ -77,9 +77,37 @@ Off-screen glyphs and erase cells are culled individually with RNG consumption
 preserved. Windows 10/MinGW Release tests passed using software and Direct3D 11
 rendering, including repeated hidden preview loops, injected creation/binding
 failures, reset notification across fields, and no thread display-required
-request. The actual Settings preview, real display-off timeout/wake behavior,
-physical multi-monitor dismissal, and actual GPU device loss remain manual
-checks. See `docs/optimization_validation.md` for results and reproduction.
+request. The user approved the actual Settings preview. On the later Windows 10
+follow-up, the real fullscreen `.scr` passed a physical display-off test with a
+temporary 60-second AC timeout: every display powered off, and mouse movement
+woke them and dismissed the saver to the desktops. The saver exited with code 0;
+the helper restored the original AC timeout of Never. Physical keyboard, scroll,
+and first-click dismissal across monitors and actual GPU device loss still need
+separate checks. See `docs/optimization_validation.md` for results and reproduction.
+
+Automatic idle activation was then verified with a temporary 30-second saver
+timeout and 60-second display timeout. Windows launched the saver automatically;
+all displays turned off and mouse input woke/dismissed normally. The helper
+restored the original five-minute saver timeout and Never AC display timeout.
+
+For a short interactive display-off check on AC power:
+
+```powershell
+& .\tools\windows\test-display-idle.ps1
+```
+
+The helper snapshots the current plan's AC display timeout, temporarily sets it
+to 60 seconds, starts the built `.scr` fullscreen after a 10-second countdown,
+and restores the timeout when the saver exits or the three-minute test limit
+expires. Leave input alone until every display turns off, then wake with physical
+input and check dismissal. It changes no screensaver settings, DC timeout, or
+system-sleep timeout. This is a manually launched saver test; automatic idle
+activation can be checked with `-AutomaticActivation`: it temporarily sets the
+installed saver's activation timeout to 30 seconds, waits up to the configured
+test duration, and restores both settings. Keep the display timeout longer than
+30 seconds for that mode. Other physical input modes require separate runs. Restoration
+runs in `finally`; terminating the PowerShell process itself can prevent it, so
+keep the printed original value if manually interrupting the host.
 
 Window-position utilities can relocate fullscreen windows and generate
 synthetic motion. Exclude the screensaver from their restoration rules;

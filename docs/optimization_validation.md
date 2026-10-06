@@ -74,6 +74,40 @@ the Windows display/device checks remain pending. The local macOS arm64 build,
 signature, automated checks, and single-display host runs are documented below,
 with the remaining Mac gaps listed there.
 
+## Display power-management follow-up (issue #6)
+
+After pulling `dff6f92`, the full Windows 10/MinGW Release build and all three
+CTest suites (`zombie_confirmation`, `rendering`, and `rendering_windows`) passed.
+The original cross-platform CI run on `95df724` also completed successfully on
+Windows, Linux, and macOS; that is distinct from testing the later Mac changes.
+
+The user reported an explicit native Wayland test on the Linux machine using
+monitor shutdown timeouts: displays powered off while the updated saver ran,
+then mouse movement restored the desktops normally. X11 was not tested.
+
+On Windows, `tools/windows/test-display-idle.ps1` temporarily changed the active
+Balanced plan's AC display timeout from Never to 60 seconds and launched the real
+built `.scr` with `/s`. The user confirmed every display powered off and mouse
+movement woke/dismissed correctly. The saver exited with code 0. The helper
+restored the AC timeout to Never; a subsequent `powercfg /query` verified that
+value and the unchanged DC timeout of 300 seconds. `powercfg /requests` was not
+available without administrator privileges, so no global request-list result is
+claimed; the native regression's thread execution-state check remains the
+automated evidence for absence of SDL's display-required request.
+
+A second run used `-AutomaticActivation -DisplayOffSeconds 60
+-MaximumTestSeconds 90`. The helper temporarily changed the installed saver's
+activation timeout from 300 to 30 seconds, observed Windows automatically launch
+the fullscreen saver, and restored both settings after 90 seconds. The user
+confirmed automatic activation, display-off on every display, and normal mouse
+wake/dismissal. The helper logged restoration of the 300-second saver timeout
+and original Never AC display timeout.
+
+The helper is an interactive diagnostic, not a production change. It restores
+temporary settings in `finally`; forcibly terminating the PowerShell host can
+prevent restoration. Physical keyboard, scrolling, and first-click dismissal
+across monitors were not separately exercised during this follow-up.
+
 ## Windows settings thumbnail
 
 The preview renders an aspect-matched canvas at least 320 pixels wide, scales it
