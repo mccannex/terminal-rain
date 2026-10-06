@@ -37,6 +37,29 @@ target_link_libraries(terminal_rain_core PUBLIC SDL2::SDL2-static)
 target_include_directories(terminal_rain_core PUBLIC ${CMAKE_SOURCE_DIR})
 target_compile_options(terminal_rain_core PRIVATE ${TERMINAL_RAIN_WARNINGS})
 
+# Opt-in rendering/lifecycle regression checks; not part of release artifacts.
+option(TERMINAL_RAIN_BUILD_TESTS "Build rendering regression checks" OFF)
+if(TERMINAL_RAIN_BUILD_TESTS)
+    enable_testing()
+    add_executable(terminal_rain_rendering_tests tests/rendering_tests.cpp)
+    target_link_libraries(terminal_rain_rendering_tests PRIVATE terminal_rain_core SDL2::SDL2-static)
+    target_compile_options(terminal_rain_rendering_tests PRIVATE ${TERMINAL_RAIN_WARNINGS})
+    # GNU ld wrapping injects SDL failures and verifies texture ownership
+    # without adding test hooks to production code. Other toolchains still
+    # run the portable rendering/reset checks.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT APPLE)
+        target_compile_definitions(terminal_rain_rendering_tests PRIVATE TERMINAL_RAIN_TEST_FAULTS)
+        target_link_options(terminal_rain_rendering_tests PRIVATE
+            -Wl,--wrap=SDL_CreateTexture -Wl,--wrap=SDL_SetRenderTarget
+            -Wl,--wrap=SDL_DestroyTexture -Wl,--wrap=SDL_DestroyRenderer)
+    endif()
+    add_test(NAME rendering COMMAND terminal_rain_rendering_tests)
+    if(WIN32)
+        add_test(NAME rendering_windows COMMAND terminal_rain_rendering_tests --native)
+        set_tests_properties(rendering_windows PROPERTIES LABELS native)
+    endif()
+endif()
+
 # Offline frame capture for the README's animated preview (see
 # tools/make_preview.py). Off by default; not part of any release.
 option(TERMINAL_RAIN_BUILD_TOOLS "Build the preview capture tool" OFF)
