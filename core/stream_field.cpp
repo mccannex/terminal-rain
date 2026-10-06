@@ -64,20 +64,45 @@ StreamField::StreamField(SDL_Renderer* renderer, SDL_Texture* glyphAtlas,
 
     target_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGBA8888,
                                  SDL_TEXTUREACCESS_TARGET, surfaceWidth_, surfaceHeight_);
-    SDL_SetTextureBlendMode(target_, SDL_BLENDMODE_BLEND);
+    if (!target_)
+    {
+        SDL_Log("Persistent texture creation failed (%dx%d): %s",
+                surfaceWidth_, surfaceHeight_, SDL_GetError());
+        return;
+    }
 
     // Persistent texture starts fully black, then is never cleared again --
     // only the selective head/dim/erase draws in render() touch it from here.
     SDL_Texture* previousTarget = SDL_GetRenderTarget(renderer_);
-    SDL_SetRenderTarget(renderer_, target_);
-    SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
-    SDL_RenderClear(renderer_);
-    SDL_SetRenderTarget(renderer_, previousTarget);
+    initialized_ = SDL_SetTextureBlendMode(target_, SDL_BLENDMODE_BLEND) == 0 &&
+                   SDL_SetRenderTarget(renderer_, target_) == 0 &&
+                   SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255) == 0 &&
+                   SDL_RenderClear(renderer_) == 0;
+    if (!initialized_)
+        SDL_Log("Persistent texture initialization failed: %s", SDL_GetError());
+    if (SDL_SetRenderTarget(renderer_, previousTarget) != 0)
+    {
+        SDL_Log("Restoring render target failed: %s", SDL_GetError());
+        initialized_ = false;
+    }
+
+    // Every field observes the event before any view drains the shared queue.
+    // Conservatively stop all fields on either reset: their persistent image
+    // cannot be assumed intact, and a device reset also invalidates the atlas.
+    if (initialized_) SDL_AddEventWatch(watchRendererReset, this);
 }
 
 StreamField::~StreamField()
 {
+    SDL_DelEventWatch(watchRendererReset, this);
     if (target_) SDL_DestroyTexture(target_);
+}
+
+int SDLCALL StreamField::watchRendererReset(void* userdata, SDL_Event* event)
+{
+    if (event->type == SDL_RENDER_TARGETS_RESET || event->type == SDL_RENDER_DEVICE_RESET)
+        static_cast<StreamField*>(userdata)->resetRequested_.store(true);
+    return 0; // Event-watch return values do not filter the event queue.
 }
 
 void StreamField::spawnDespawn()
@@ -128,10 +153,15 @@ void StreamField::updateMovement()
     }
 }
 
-void StreamField::render()
+bool StreamField::render()
 {
     SDL_Texture* previousTarget = SDL_GetRenderTarget(renderer_);
-    SDL_SetRenderTarget(renderer_, target_);
+    if (SDL_SetRenderTarget(renderer_, target_) != 0)
+    {
+        SDL_Log("Binding persistent render target failed: %s", SDL_GetError());
+        SDL_SetRenderTarget(renderer_, previousTarget);
+        return false;
+    }
 
     blackCells_.clear();
     glyphDraws_.clear();
@@ -177,9 +207,10 @@ void StreamField::render()
     // Pass 1: every opaque black fill in one batched call. Matching GDI's
     // opaque-background TextOutW, this clears each glyph cell (and erases the
     // trail points) before any glyph is blitted on top.
-    SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
-    if (!blackCells_.empty())
-        SDL_RenderFillRects(renderer_, blackCells_.data(), static_cast<int>(blackCells_.size()));
+    bool success = SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255) == 0;
+    if (success && !blackCells_.empty())
+        success = SDL_RenderFillRects(renderer_, blackCells_.data(),
+                                     static_cast<int>(blackCells_.size())) == 0;
 
     // Pass 2: glyphs, sorted by color so the color-key only changes a handful
     // of times (there are just 2*(kSpeedDelay+1) distinct brightnesses), which
@@ -190,21 +221,36 @@ void StreamField::render()
     uint32_t currentColor = 0xffffffffu; // force a set on the first glyph
     for (const GlyphDraw& gd : glyphDraws_)
     {
+        if (!success) break;
         if (gd.colorKey != currentColor)
         {
-            SDL_SetTextureColorMod(atlas_, gd.r, gd.g, gd.b);
+            success = SDL_SetTextureColorMod(atlas_, gd.r, gd.g, gd.b) == 0;
+            if (!success) break;
             currentColor = gd.colorKey;
         }
         SDL_Rect src = glyphSrcRect(gd.glyphIndex);
-        SDL_RenderCopy(renderer_, atlas_, &src, &gd.dst);
+        success = SDL_RenderCopy(renderer_, atlas_, &src, &gd.dst) == 0;
     }
 
-    SDL_SetRenderTarget(renderer_, previousTarget);
+    if (!success) SDL_Log("Drawing stream field failed: %s", SDL_GetError());
+    if (SDL_SetRenderTarget(renderer_, previousTarget) != 0)
+    {
+        SDL_Log("Restoring render target failed: %s", SDL_GetError());
+        success = false;
+    }
+    return success;
 }
 
-void StreamField::tick()
+bool StreamField::tick()
 {
+    if (!valid())
+    {
+        if (initialized_) SDL_Log("Renderer reset: stopping stream field");
+        initialized_ = false;
+        return false;
+    }
     spawnDespawn();
     updateMovement();
-    render();
+    initialized_ = render();
+    return valid();
 }

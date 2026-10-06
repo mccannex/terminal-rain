@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL.h>
+#include <atomic>
 #include <cstdint>
 #include <vector>
 #include "rng.h"
@@ -46,8 +47,12 @@ public:
     StreamField& operator=(const StreamField&) = delete;
 
     // Advances stream lifecycle/movement and draws this tick's deltas onto
-    // the persistent target texture. Does not touch the screen.
-    void tick();
+    // the persistent target texture. Does not touch the screen. Returns false
+    // on rendering failure or device/target reset; the caller must stop using
+    // this field and tear it down before destroying its renderer.
+    bool tick();
+
+    bool valid() const { return initialized_ && !resetRequested_.load(); }
 
     SDL_Texture* targetTexture() const { return target_; }
 
@@ -78,11 +83,16 @@ private:
 
     void spawnDespawn();
     void updateMovement();
-    void render();
+    bool render();
+    static int SDLCALL watchRendererReset(void* userdata, SDL_Event* event);
 
     SDL_Renderer* renderer_;
     SDL_Texture* atlas_;
-    SDL_Texture* target_;
+    SDL_Texture* target_ = nullptr;
+    bool initialized_ = false;
+    // SDL can invoke event watches from another thread. The watch only sets
+    // this flag; all rendering and cleanup remain on the owning thread.
+    std::atomic<bool> resetRequested_{false};
     int surfaceWidth_;
     int surfaceHeight_;
     int glyphW_;

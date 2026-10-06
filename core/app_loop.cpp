@@ -64,7 +64,7 @@ namespace
 
     // Owns everything one display's simulation needs, and tears it down in
     // destruction order (field, then atlas/renderer/window). Move-only, so a
-    // half-built instance whose scope exits early (a mid-setup `continue`)
+    // half-built instance whose scope exits early (a setup failure)
     // cleans up its partial resources automatically.
     struct DisplayInstance
     {
@@ -118,25 +118,36 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
         return 1;
     }
 
-    // Destroy the field texture before its renderer.
+    int result = 0;
+    // The field owns a renderer texture, so it must leave scope before the
+    // renderer (which also destroys every texture still associated with it).
     {
         int windowWidth, windowHeight;
         SDL_GetWindowSize(window, &windowWidth, &windowHeight);
         StreamField field(renderer, atlas, windowWidth, windowHeight, contentScale);
 
-        // Preview mode is a small embedded thumbnail in someone else's dialog,
-        // not an exclusive fullscreen surface -- leave the system cursor alone
-        // there. SDL_ShowCursor is a process-global setting, not per-window.
-        if (!isPreview) SDL_ShowCursor(SDL_DISABLE);
+        // Preview mode is embedded in someone else's dialog; leave the
+        // process-global system cursor alone there.
+        if (!field.valid()) result = 1;
+        if (!isPreview && result == 0) SDL_ShowCursor(SDL_DISABLE);
 
         int motionCount = 0;
-        while (!shouldStop(isPreview, motionCount))
+        while (result == 0 && !shouldStop(isPreview, motionCount))
         {
             Uint32 frameStart = SDL_GetTicks();
 
-            field.tick();
-            SDL_SetRenderTarget(renderer, nullptr);
-            SDL_RenderCopy(renderer, field.targetTexture(), nullptr, nullptr);
+            if (!field.tick())
+            {
+                result = 1;
+                break;
+            }
+            if (SDL_SetRenderTarget(renderer, nullptr) != 0 ||
+                SDL_RenderCopy(renderer, field.targetTexture(), nullptr, nullptr) != 0)
+            {
+                SDL_Log("Presenting stream field failed: %s", SDL_GetError());
+                result = 1;
+                break;
+            }
             SDL_RenderPresent(renderer);
 
             paceFrame(frameStart);
@@ -147,7 +158,7 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
 
     SDL_DestroyTexture(atlas);
     SDL_DestroyRenderer(renderer);
-    return 0;
+    return result;
 }
 
 int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
@@ -175,19 +186,24 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
             1024, 768,
             SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_ALLOW_HIGHDPI |
                 SDL_WINDOW_ALWAYS_ON_TOP);
-        if (!instance.window) continue;
+        if (!instance.window)
+        {
+            SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
+            return 1;
+        }
 
         instance.renderer = createRenderer(instance.window);
-        if (!instance.renderer) continue; // instance's dtor frees the window
+        if (!instance.renderer) return 1; // instance's dtor frees the window
 
         instance.atlas = loadGlyphAtlas(instance.renderer);
-        if (!instance.atlas) continue;    // dtor frees renderer + window
+        if (!instance.atlas) return 1;    // dtor frees renderer + window
 
         int windowWidth, windowHeight;
         SDL_GetWindowSize(instance.window, &windowWidth, &windowHeight);
         float contentScale = getContentScale ? getContentScale(i) : 1.0f;
         instance.field = new StreamField(instance.renderer, instance.atlas,
                                          windowWidth, windowHeight, contentScale);
+        if (!instance.field->valid()) return 1;
 
         instances.push_back(std::move(instance));
     }
@@ -203,21 +219,31 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
     // any display closes all windows together. SDL's event queue is shared,
     // so one poll and motion counter cover every window.
     int motionCount = 0;
-    while (!shouldStop(false, motionCount))
+    int result = 0;
+    while (result == 0 && !shouldStop(false, motionCount))
     {
         Uint32 frameStart = SDL_GetTicks();
 
         for (DisplayInstance& instance : instances)
         {
-            instance.field->tick();
-            SDL_SetRenderTarget(instance.renderer, nullptr);
-            SDL_RenderCopy(instance.renderer, instance.field->targetTexture(), nullptr, nullptr);
+            if (!instance.field->tick())
+            {
+                result = 1;
+                break;
+            }
+            if (SDL_SetRenderTarget(instance.renderer, nullptr) != 0 ||
+                SDL_RenderCopy(instance.renderer, instance.field->targetTexture(), nullptr, nullptr) != 0)
+            {
+                SDL_Log("Presenting stream field failed: %s", SDL_GetError());
+                result = 1;
+                break;
+            }
             SDL_RenderPresent(instance.renderer);
         }
 
-        paceFrame(frameStart);
+        if (result == 0) paceFrame(frameStart);
     }
 
     SDL_ShowCursor(SDL_ENABLE);
-    return 0; // instances' destructors tear down every window/renderer/atlas/field
+    return result; // instances' destructors tear down every window/renderer/atlas/field
 }

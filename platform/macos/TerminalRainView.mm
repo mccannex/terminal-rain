@@ -171,11 +171,19 @@ static BOOL screenIsLocked(void)
     exit(0);
 }
 
+- (void)stopForRenderingFailure
+{
+    SDL_Log("Stopping screensaver view after rendering setup/draw failure: %s", SDL_GetError());
+    _permanentlyStopped = YES;
+    [self stopAnimation];
+}
+
 - (void)setUpIfNeeded
 {
-    if (_window) return;
+    if (_window || _permanentlyStopped) return;
 
     static dispatch_once_t onceToken;
+    static int initResult;
     dispatch_once(&onceToken, ^{
         // SDL_Init defaults to disabling the OS's idle/screensaver detection
         // (an IOPMAssertion named "using SDL_DisableScreenSaver") -- meant
@@ -187,24 +195,33 @@ static BOOL screenIsLocked(void)
         // assertion silently prevented "Show screensaver after 1 minute"
         // from ever firing.
         SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
-        SDL_Init(SDL_INIT_VIDEO);
+        initResult = SDL_Init(SDL_INIT_VIDEO);
     });
+    if (initResult != 0)
+    {
+        [self stopForRenderingFailure];
+        return;
+    }
 
     _window = SDL_CreateWindowFrom((__bridge void*)self);
-    if (!_window) return;
+    if (!_window)
+    {
+        [self stopForRenderingFailure];
+        return;
+    }
 
     _renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
     if (!_renderer) _renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_SOFTWARE);
     if (!_renderer)
     {
-        [self teardown];
+        [self stopForRenderingFailure];
         return;
     }
 
     _atlas = loadGlyphAtlas(_renderer);
     if (!_atlas)
     {
-        [self teardown];
+        [self stopForRenderingFailure];
         return;
     }
 
@@ -215,6 +232,12 @@ static BOOL screenIsLocked(void)
     // the .saver ships no runtime config file. contentScale stays at its 1.0
     // default -- SDL's Cocoa backend already handles Retina drawable scaling.
     _field = new StreamField(_renderer, _atlas, width, height);
+    if (!_field->valid())
+    {
+        // Shared-core rendering failures must not retry at animation cadence.
+        [self stopForRenderingFailure];
+        return;
+    }
     os_log(saverLog(), "stream field: %dx%d, streamCap=%d",
            width, height, _field->streamCap());
 }
@@ -292,9 +315,22 @@ static BOOL screenIsLocked(void)
     SDL_Event event;
     while (SDL_PollEvent(&event)) {}
 
-    _field->tick();
-    SDL_SetRenderTarget(_renderer, nullptr);
-    SDL_RenderCopy(_renderer, _field->targetTexture(), nullptr, nullptr);
+    // Each field's reset watch runs before any view drains SDL's shared
+    // queue, so sibling displays also stop if their persistent image is lost.
+    if (!_field->tick())
+    {
+        _permanentlyStopped = YES;
+        [self stopAnimation];
+        return;
+    }
+    if (SDL_SetRenderTarget(_renderer, nullptr) != 0 ||
+        SDL_RenderCopy(_renderer, _field->targetTexture(), nullptr, nullptr) != 0)
+    {
+        SDL_Log("Presenting stream field failed: %s", SDL_GetError());
+        _permanentlyStopped = YES;
+        [self stopAnimation];
+        return;
+    }
     SDL_RenderPresent(_renderer);
 }
 

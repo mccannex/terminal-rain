@@ -6,6 +6,7 @@
 // creates a renderer, loads the glyph atlas + config, drives a StreamField,
 // and pumps events until closed. Does not create or destroy the window
 // itself -- the caller owns that.
+// Returns 1 on setup/drawing failure or renderer reset, after cleanup.
 //
 // isPreview: when true, ignores keyboard and mouse dismissal input (used
 // for Windows' /p preview-embedded window, whose lifetime is governed by

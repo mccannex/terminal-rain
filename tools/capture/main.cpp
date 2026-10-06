@@ -93,10 +93,12 @@ int main(int argc, char* argv[])
 
     {
         StreamField field(renderer, atlas, width, height);
+        if (!field.valid()) return 1;
         std::fprintf(stderr, "%dx%d, streamCap=%d, warmup=%d frames, loop=%d, fade=%d\n",
                      width, height, field.streamCap(), warmupFrames, loopFrames, fadeFrames);
 
-        for (int i = 0; i < warmupFrames; ++i) field.tick();
+        for (int i = 0; i < warmupFrames; ++i)
+            if (!field.tick()) return 1;
 
         std::vector<Uint8> frame;
         std::vector<std::vector<Uint8>> head(fadeFrames); // A[0 .. fadeFrames)
@@ -104,7 +106,7 @@ int main(int argc, char* argv[])
 
         for (int i = 0; i < loopFrames + fadeFrames; ++i)
         {
-            field.tick();
+            if (!field.tick()) return 1;
             grabFrame(renderer, surface, field, frame);
 
             if (i < fadeFrames)
