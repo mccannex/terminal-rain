@@ -108,6 +108,30 @@ temporary settings in `finally`; forcibly terminating the PowerShell host can
 prevent restoration. Physical keyboard, scrolling, and first-click dismissal
 across monitors were not separately exercised during this follow-up.
 
+## Rendering-failure resolution review (issue #8)
+
+The post-pull Windows CTest log confirms software rendering and the native
+`direct3d11` backend passed. Coverage includes injected texture-allocation and
+initial/runtime target-binding failures, genuine wrong-renderer atlas draw
+failure, previous-target restoration, destruction order, both reset types across
+two fields after queue draining, teardown/restart, and preview loop shutdown.
+Device-reset handling stops the field; callers destroy the field and atlas before
+the renderer rather than continuing to use either potentially invalid texture.
+
+The macOS follow-up below supplies local arm64 Release build/signature checks,
+native Metal rendering/readback and synthetic-reset shutdown, plus real saver
+host launch/dismissal checks. The issue #6 follow-up above additionally records
+normal physical display power transitions on Windows and Linux Wayland. These
+display-off/wake checks are not evidence that a GPU device-reset event occurred.
+
+The initialization and reset implementation is complete and its failure/dispatch
+checks pass, so issue #8 can be resolved with these limits recorded. Actual GPU
+resource loss has not been induced. Native macOS view failure injection, full
+preview-host lifecycle, multiple Mac displays, Intel Mac hardware, and X11 remain
+untested. The recorded native Wayland check does not include Linux-specific fault
+injection or an identified accelerated renderer. These are remaining coverage
+gaps, not claims that the corresponding hardware conditions were reproduced.
+
 ## Windows settings thumbnail
 
 The preview renders an aspect-matched canvas at least 320 pixels wide, scales it
