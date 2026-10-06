@@ -7,10 +7,9 @@
 // and pumps events until closed. Does not create or destroy the window
 // itself -- the caller owns that.
 //
-// isPreview: when true, disables the mouse-motion-to-close debounce (used
-// for Windows' /p preview-embedded window, which shouldn't disappear just
-// because the cursor happens to pass over its small thumbnail area -- its
-// lifetime is governed by the parent process instead).
+// isPreview: when true, ignores keyboard and mouse dismissal input (used
+// for Windows' /p preview-embedded window, whose lifetime is governed by
+// the parent process instead).
 //
 // contentScale: multiplies the glyph cell size so content stays a
 // perceptually consistent physical size across displays of differing
