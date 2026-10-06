@@ -95,9 +95,10 @@ Debugging aids:
   later. **Synthetic input can't dismiss it.** On the development Mac the
   session locks as soon as the engine starts (`locked=1` from the first
   frame), and a `CGEventPost` mouse move resets the HID idle time but the
-  engine ignores it. An automated test can cover launch, animation and
-  post-dismissal self-termination; the dismissal itself needs a person to
-  move the mouse or press a key. Run launch and verification as a single
+  engine ignores it. Automated timing and rendering tests cover the
+  confirmation state machine and rendering setup, but not actual
+  legacyScreenSaver process death; dismissal itself needs a person to move the
+  mouse or press a key. Run launch and verification as a single
   command, since approving any later step is itself input.
 - Always verify process death directly (`ps aux | grep legacyScreenSaver`,
   CPU sampling, `sample <pid>` for stacks), never from visuals alone.
@@ -152,9 +153,9 @@ confirmed live:
 ## Status
 
 **Done and verified on the development Mac**: appears in the picker with
-its thumbnail, animates correctly full-screen (Preview and real idle
-trigger) with correct Retina sizing, exits on input, doesn't block its own
-idle trigger, and self-terminates its host process ~2s after dismissal
+its thumbnail, animates correctly in the Settings preview and on a real idle
+trigger with correct Retina sizing, exits on input, doesn't block its own idle
+trigger, and self-terminates its host process ~2s after dismissal
 instead of animating invisibly forever. Releases ship via CI
 (`.github/workflows/release.yml`) with the curl install flow.
 
@@ -164,12 +165,11 @@ Open, non-blocking:
   per-field SDL reset watches, clean stop on rendering failure, and off-screen
   culling. This view now observes the field's failure result and stops its
   timer/resources instead of retrying failed rendering at 20 Hz. The changes
-  have now been built on macOS; remaining native checks are true preview hosting,
-  multi-display behavior, naturally delivered healthy stop/start, artificially
-  delayed lock-state clearing, and actual GPU loss. CI/local build instructions
-  now select Release explicitly; CI also runs portable rendering checks. The
-  arm64 bundle/signature, single-display fullscreen host runs, and synthetic
-  Metal rendering checks passed on this Mac. Issue #9 now latches qualifying input with monotonic timing. Locked frames
+  have now been built on macOS; the unverified rendering-failure and actual
+  GPU-loss shutdown paths remain. CI/local build instructions now select Release
+  explicitly; CI also runs portable rendering checks. The arm64
+  bundle/signature, single-display fullscreen host runs, and synthetic Metal
+  rendering checks passed on this Mac. Issue #9 now latches qualifying input with monotonic timing. Locked frames
   cancel pending confirmation; the first unlocked observation of post-grace
   input starts a fresh two-second window, including when the lock flag clears
   late after a single input. Start/stop reset the state. Grace-only dismissal
@@ -178,9 +178,12 @@ Open, non-blocking:
   passed on this Mac on 2026-10-06; its ad-hoc signature verified. The native
   hidden-window Metal rendering/readback and synthetic-reset test also passed. Two real fullscreen host runs also passed: locked animation, physical dismissal
   and post-unlock process death, with single input and with continuous activity
-  (HID idle 0.01s at termination). The rebuilt saver remains installed. Preview,
-  multi-display and naturally delivered healthy stop/start checks remain pending;
-  see docs/optimization_validation.md for observed process timing and limits.
+  (HID idle 0.01s at termination). The rebuilt saver remains installed. Remaining
+  native host gaps are preview-host lifecycle/cleanup beyond the observed
+  fullscreen runs, multi-display behavior, naturally delivered healthy
+  stop/start, artificially delayed lock-state clearing, and actual GPU-loss
+  shutdown; Intel hardware is separately untested. See
+  docs/optimization_validation.md for observed process timing and limits.
 
 - The universal build's Intel slice is untested on real hardware.
 - Optional future config sheet (none planned; the defaults are tuned).

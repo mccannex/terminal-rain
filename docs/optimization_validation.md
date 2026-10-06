@@ -3,6 +3,9 @@
 Implementation/validation performed on Windows 10 (10.0.19045), 2026-10-06.
 Baseline: `3b00f06def7c740c1caaeec8490c5dcd9873597e` (reviewed for issue #4).
 
+This opening section records the historical Windows/shared-core validation; the
+macOS follow-up below records later local arm64 validation.
+
 ## Changes and remaining platform work
 
 - #7: preview's field/target now dies before its renderer. Repeated hidden
@@ -17,15 +20,25 @@ Baseline: `3b00f06def7c740c1caaeec8490c5dcd9873597e` (reviewed for issue #4).
   thread. Both reset events cause clean shutdown, including when another consumer
   drains the queue. The multi-display loop also rejects partial setup instead of
   leaving a monitor uncovered. macOS's caller stops its timer/resources on failure
-  rather than retrying failed setup every frame; that adaptation is unbuilt on Mac.
+  rather than retrying failed setup every frame. That adaptation is now built;
+  its native Metal setup/rendering check passed, while rendering-failure and
+  actual GPU-loss shutdown remain unverified.
 - #10: individual invisible glyphs and erase cells are excluded before queueing
   and sorting. Simulation, random-number consumption, visible trailing erases,
   and color/erase pass ordering are retained. No color-bucket rewrite was needed.
 - #5: Linux/macOS release jobs and macOS local instructions explicitly select
   Release. All release jobs now build/run the portable regression checks; Windows
-  continues to select Release with its multi-configuration build command. Linux
-  and macOS CI/native builds have not been run for this working-tree change.
-- #9: macOS zombie confirmation now starts at the first unlocked qualifying observation and uses a fixed two-second window, so sustained input cannot postpone shutdown. Automated timing/rendering checks and two real fullscreen host runs passed; grace-only dismissal remains intentionally ambiguous. Native preview, multi-display, naturally delivered healthy stop/start, delayed lock-state clearing, actual GPU loss, and Intel hardware remain unverified.
+  continues to select Release with its multi-configuration build command. The
+  Windows checks above are historical; Linux CI/native coverage and macOS CI
+  coverage have not been run for this working-tree change. The local macOS arm64
+  Release build and native checks are documented below.
+- #9: macOS zombie confirmation now starts at the first unlocked qualifying
+  observation and uses a fixed two-second window, so sustained input cannot
+  postpone shutdown. Automated timing/rendering checks and two real fullscreen
+  host runs passed; grace-only dismissal remains intentionally ambiguous. Native
+  preview-host lifecycle/cleanup, multi-display, naturally delivered healthy
+  stop/start, delayed lock-state clearing, and actual GPU-loss shutdown remain
+  unverified; Intel hardware is also untested.
 
 ## Executed checks
 
@@ -37,8 +50,9 @@ cmake --build build-mingw -j 4
 ctest --test-dir build-mingw --output-on-failure --timeout 30
 ```
 
-Both CTest suites passed: the dummy-video/software suite and a native Windows
-hidden-window suite using `direct3d11`. They cover ordinary drawing, previous-target
+On the Windows run recorded here, both CTest suites passed: the
+dummy-video/software suite and a native Windows hidden-window suite using
+`direct3d11`. They cover ordinary drawing, previous-target
 restoration, invalid dimensions, injected target allocation/binding failures,
 runtime drawing failure, both reset types across two fields after queue draining,
 restart after teardown, repeated preview shutdown, and preview input/reset behavior.
@@ -53,10 +67,12 @@ the optional native test with `ctest --test-dir build -C Release -LE native`.
 The user visually verified the embedded Windows Screen Saver settings thumbnail
 and approved the final glyph size and sustained stream density.
 
-Still manual: physical input dismissal on multiple monitors, real idle activation
-and display-off/wake transitions, and actual
-device-loss recovery/shutdown. Native Linux/macOS build and runtime coverage is
-pending. Existing platform context files record the handoff details.
+For the Windows/shared-core pass, still manual: physical input dismissal on
+multiple monitors, real idle activation and display-off/wake transitions, and
+actual device-loss recovery/shutdown. Native Linux build/runtime coverage and
+the Windows display/device checks remain pending. The local macOS arm64 build,
+signature, automated checks, and single-display host runs are documented below,
+with the remaining Mac gaps listed there.
 
 ## Windows settings thumbnail
 
@@ -245,8 +261,13 @@ Input only within the startup grace remains ignored: the available signals canno
 reliably distinguish dismissal from legitimate hot-corner activation.
 
 These automated checks do not prove actual legacyScreenSaver process death after
-physical dismissal. Native lock/unlock, healthy stop/start, preview and multiple
-monitor checks remain pending. The rebuilt saver was subsequently installed and tested as described below.
+physical dismissal. The native host runs below cover locked animation, physical
+dismissal, post-unlock process death, and continuous input on one built-in display.
+Delayed lock-state clearing, naturally delivered healthy stop/start, preview-host
+lifecycle/cleanup, multiple monitors, actual GPU-loss shutdown, and Intel hardware
+remain pending; the applicable timing/state transitions remain covered by
+automated tests. The rebuilt saver was subsequently installed and tested as
+described below.
 
 ### Native host verification
 
@@ -271,6 +292,7 @@ The existing installed bundle was backed up to
 The rebuilt local bundle remains installed. These runs establish real host
 launch, locked animation, post-dismissal cleanup after unlock, and cleanup during
 continuous input on the single built-in display. They do not cover multiple
-monitors, true preview hosting, a naturally delivered healthy stopAnimation,
-artificially delayed lock-state clearing, actual GPU loss, or Intel hardware.
-Those timing/state transitions remain covered by automated tests where applicable.
+monitors, the full preview-host lifecycle/cleanup, a naturally delivered healthy
+stopAnimation, artificially delayed lock-state clearing, actual GPU loss, or
+Intel hardware. Those timing/state transitions remain covered by automated tests
+where applicable.
