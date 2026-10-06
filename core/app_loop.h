@@ -36,5 +36,5 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale = 1.0f)
 // window's drawable size already differs from its logical size by the
 // compositor's real per-output scale under both platforms' HiDPI handling,
 // and runMultiDisplayStreamLoop's own draw-then-stretch-on-present already
-// applies that automatically (see src/sdl_app/main.cpp).
+// applies that automatically (see platform/linux/main.cpp).
 int runMultiDisplayStreamLoop(std::function<float(int displayIndex)> getContentScale = nullptr);

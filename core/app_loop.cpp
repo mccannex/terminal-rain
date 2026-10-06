@@ -157,7 +157,7 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
         // "Always Visible" are designed to stay above normal fullscreen
         // windows -- only windows requesting the WM's "above" layer cover them.
         instance.window = SDL_CreateWindow(
-            "Glyph Rain",
+            "Terminal Rain",
             SDL_WINDOWPOS_UNDEFINED_DISPLAY(i), SDL_WINDOWPOS_UNDEFINED_DISPLAY(i),
             1024, 768,
             SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_ALLOW_HIGHDPI |

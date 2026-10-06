@@ -5,13 +5,13 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>Glyph Rain</string>
+    <string>Terminal Rain</string>
     <key>CFBundleIdentifier</key>
-    <string>com.mccannex.glyphrain.screensaver</string>
+    <string>com.mccannex.terminalrain.screensaver</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Glyph Rain</string>
+    <string>Terminal Rain</string>
     <key>CFBundlePackageType</key>
     <string>BNDL</string>
     <key>CFBundleShortVersionString</key>
@@ -21,7 +21,7 @@
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>NSPrincipalClass</key>
-    <string>GlyphRainView</string>
+    <string>TerminalRainView</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>

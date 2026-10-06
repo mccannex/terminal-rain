@@ -1,4 +1,4 @@
-#import "GlyphRainView.h"
+#import "TerminalRainView.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <os/log.h>
 #include <SDL.h>
@@ -47,7 +47,7 @@
 //    continuous animation with no legitimate stop.
 //
 // Both defenses call exit() on the whole host process, not just
-// self-teardown. legacyScreenSaver can host one GlyphRainView per display on
+// self-teardown. legacyScreenSaver can host one TerminalRainView per display on
 // a multi-monitor setup, all sharing one process -- but that's one
 // activation, one session, created together and meant to dismiss together.
 // If this view has been orphaned/stuck, every sibling view shares the exact
@@ -80,7 +80,7 @@ static os_log_t saverLog(void)
     static os_log_t log;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        log = os_log_create("com.mccannex.glyph-rain", "saver");
+        log = os_log_create("com.mccannex.terminal-rain", "saver");
     });
     return log;
 }
@@ -97,7 +97,7 @@ static BOOL screenIsLocked(void)
     return [session[@"CGSSessionScreenIsLocked"] boolValue];
 }
 
-@implementation GlyphRainView
+@implementation TerminalRainView
 {
     SDL_Window* _window;
     SDL_Renderer* _renderer;

@@ -6,5 +6,5 @@
 // (core/app_loop.cpp), except the OS does the enumeration/placement for us
 // here, so this class only ever drives a single StreamField for its own
 // frame.
-@interface GlyphRainView : ScreenSaverView
+@interface TerminalRainView : ScreenSaverView
 @end

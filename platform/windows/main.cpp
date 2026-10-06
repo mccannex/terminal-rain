@@ -13,7 +13,7 @@
 //   /a ###      Windows 95/Plus!-era password-change dialog; vestigial today
 //   (none)      same as /c with a NULL parent
 // Callers vary in case, '/' vs '-' prefix, and space vs ':' before the value,
-// so parsing tolerates all of that. See planning/SCR_SHELL_PLAN.md.
+// so parsing tolerates all of that.
 
 namespace
 {
@@ -68,9 +68,9 @@ namespace
     {
         if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
-        // No per-display content-scale query on Windows yet (unlike Linux/KDE,
-        // see src/sdl_app/main.cpp) -- each display renders at contentScale
-        // 1.0 for now.
+        // No per-display content-scale query needed: SDL's HiDPI
+        // draw-then-stretch already applies each display's scale (same as
+        // Linux, see platform/linux/main.cpp).
         int result = runMultiDisplayStreamLoop(nullptr);
 
         SDL_Quit();
@@ -95,7 +95,7 @@ namespace
         // dialog in testing. Instead, create our own window and reparent it
         // into the given HWND, same as any native Win32 screensaver preview.
         SDL_Window* window = SDL_CreateWindow(
-            "Glyph Rain Preview",
+            "Terminal Rain Preview",
             0, 0, width, height,
             SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS);
         if (!window)
@@ -132,8 +132,8 @@ namespace
     {
         // No settings are configurable yet -- this build uses fixed defaults.
         MessageBoxA(parentHwnd,
-            "Glyph Rain has no configurable settings yet.",
-            "Glyph Rain",
+            "Terminal Rain has no configurable settings yet.",
+            "Terminal Rain",
             MB_OK | MB_ICONINFORMATION);
         return 0;
     }

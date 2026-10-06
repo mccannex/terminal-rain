@@ -8,7 +8,7 @@ not a running build log.
 
 ## Project, in brief
 
-**Glyph Rain**: a cross-platform rewrite of a classic Win32/GDI "Matrix
+**Terminal Rain**: a cross-platform rewrite of a classic Win32/GDI "Matrix
 digital rain" screensaver (originally by Louai Munajim, CC BY 3.0) on top of
 SDL2, with a platform-agnostic simulation core (`core/`) shared across all
 targets. SDL2 is vendored via CMake `FetchContent` (pinned
@@ -23,8 +23,8 @@ integration (deliberate: no session locking wanted) — instead:
 
 - **KDE Power Management idle hook**: System Settings → Power Management →
   Energy Saving → "Run custom script" on inactivity, pointing at
-  `~/.local/bin/glyph-rain-screensaver.sh` — a one-line `exec` wrapper
-  around `build/linux/glyph_rain_dev`.
+  `~/.local/bin/terminal-rain-screensaver.sh` — a one-line `exec` wrapper
+  around `build/linux/terminal-rain`.
 - powerdevil just launches it once at the idle threshold; the app exits
   itself on real input via the motion-event debounce in
   `core/app_loop.cpp` (shared with Windows). No lifecycle management
@@ -45,7 +45,7 @@ cmake --build build/linux -j$(nproc)
 
 Keep *both* the X11 and Wayland dev-header sets installed: with headers
 missing, SDL2 configures successfully but silently builds with every video
-driver off. Sanity-check with `./build/linux/glyph_rain_dev` (should render
+driver off. Sanity-check with `./build/linux/terminal-rain` (should render
 and exit cleanly on mouse movement).
 
 ## HiDPI / multi-monitor — done, don't regress
@@ -53,8 +53,9 @@ and exit cleanly on mouse movement).
 Verified live on this machine's real 4-monitor mixed-DPI (100%–206%)
 Wayland layout:
 
-- **Native Wayland is forced** (`setenv("SDL_VIDEODRIVER", "wayland", 1)`
-  in `src/sdl_app/main.cpp` before `SDL_Init`). Without it SDL picks
+- **Native Wayland is preferred** (`setenv("SDL_VIDEODRIVER", "wayland", 0)`
+  in `platform/linux/main.cpp` before `SDL_Init`, only when
+  `WAYLAND_DISPLAY` is set; plain X11 sessions keep SDL's auto-detection). Without it SDL picks
   `x11`/XWayland, whose virtual screen has its own global supersampling
   scale — even *correct* per-output scale values render wrong when applied
   in XWayland's coordinate space. A KWin/KScreen D-Bus scale query was
@@ -80,9 +81,8 @@ input.
 
 Open, non-blocking:
 
-- No dedicated Linux packaging target — the powerdevil script still points
-  at the `glyph_rain_dev` dev binary directly, unlike Windows'
-  `platform/windows/main.cpp` → `.scr` split.
+- No packaging (no .rpm/.deb or install script) — the powerdevil script
+  points at the built `terminal-rain` binary directly.
 - Idea only, not started: a user-configurable "master scale" multiplier on
   top of the per-monitor auto-scaling (the laptop panel's normalized size
   runs slightly larger than preferred).
