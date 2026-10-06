@@ -1,6 +1,6 @@
 # Terminal Rain
 
-![Terminal Rain screensaver](docs/terminal-rain.gif)
+![Terminal Rain screensaver](docs/terminal-rain.png)
 
 > "Unfortunately, no one can be told what the Matrix is. You have to see it for yourself." - Morpheus, *The Matrix* (1999)
 
@@ -24,6 +24,8 @@ different machines. I like it a lot. Maybe you'll like it too.
   screen isn't crowded and a large monitor isn't sparse.
 - **HiDPI support.** Glyphs stay the same physical size across displays with different scaling,
   including mixed-DPI setups.
+- **sRGB colors.** One shared palette, explicitly tagged on the macOS Metal
+  output and in the README preview. Display settings can still affect appearance.
 - **Original font.** Uses the same 8x12 "Terminal" font as the original, with 480 glyphs
   instead of 256 (see [Terminal font](#terminal-font)).
 - **Self-contained.** SDL2 is statically linked and the font is compiled in. Each platform ships

@@ -34,7 +34,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageCms
 
 FRAME_MS = 50
 TRANSPARENT = 255
@@ -99,9 +99,21 @@ def write_gif(frames, out):
 
 
 def write_apng(frames, out):
-    images = [Image.fromarray(f, mode="RGB") for f in frames]
+    # Indexed APNG keeps sparse rain previews compact without changing colors.
+    palette, to_indices, exact = build_palette(frames)
+    if exact:
+        flat_palette = palette.astype(np.uint8).flatten().tolist()
+        flat_palette += [0] * (768 - len(flat_palette))
+        images = []
+        for frame in frames:
+            img = Image.fromarray(to_indices(frame), mode="P")
+            img.putpalette(flat_palette)
+            images.append(img)
+    else:
+        images = [Image.fromarray(f, mode="RGB") for f in frames]
+    profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
     images[0].save(out, save_all=True, append_images=images[1:], duration=FRAME_MS,
-                   loop=0, optimize=True)
+                   loop=0, optimize=True, icc_profile=profile)
 
 
 def verify(frames, out):

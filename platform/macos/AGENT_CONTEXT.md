@@ -187,3 +187,13 @@ Open, non-blocking:
 
 - The universal build's Intel slice is untested on real hardware.
 - Optional future config sheet (none planned; the defaults are tuned).
+
+## Color baseline
+
+The palette is encoded sRGB. `metal_color_space.h` tags the Metal presentation
+layer after renderer creation; it leaves the pixel format and HDR/EDR mode alone.
+A real-host A/B capture confirmed that explicit tagging reduces the extra
+saturation seen in the default screensaver host on the M1 Air. Ordinary-window
+captures did not reproduce that difference. Native color regression tests check
+the tag and unchanged palette readback. See `docs/color_rendering.md` for the
+cross-platform source inspection and remaining display-management limits.

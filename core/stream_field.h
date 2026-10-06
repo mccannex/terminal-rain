@@ -16,7 +16,25 @@ namespace streamsim
     constexpr int   kLeading    = 50;   // min rows behind the head before a random erase can happen
     constexpr int   kSpacePad   = 30;   // range added to kLeading for the random erase point
     constexpr int   kSpeedDelay = 5;    // max ticks a stream can wait between row-advances
-    constexpr Uint8 kHeadR = 150, kHeadG = 255, kHeadB = 125; // base head color
+    struct StreamColor { Uint8 r, g, b; };
+    // Encoded sRGB, fastest to slowest. Perceptual starting ramp with
+    // visually tuned tier spacing: larger drops across the first three speeds,
+    // a slightly brighter fastest tier and a slightly dimmer fifth tier.
+    constexpr StreamColor kHeadColors[] = {
+        {126, 255, 105}, {86, 185, 71}, {64, 140, 53},
+        {50, 112, 40}, {36, 88, 29}, {18, 53, 13}
+    };
+    constexpr StreamColor kTrailColors[] = {
+        {38, 92, 30}, {26, 66, 21}, {20, 54, 16},
+        {16, 45, 12}, {10, 36, 8}, {5, 21, 2}
+    };
+    // Original palette, fastest to slowest (before perceptual/color tuning):
+    // Head:  {150,255,125}, {125,213,105}, {100,171,85},
+    //        {75,129,65}, {50,87,45}, {25,45,25}
+    // Trail: {50,85,41}, {42,71,35}, {34,57,29},
+    //        {26,43,23}, {18,29,17}, {10,15,11}
+    static_assert(sizeof(kHeadColors) / sizeof(kHeadColors[0]) == kSpeedDelay + 1);
+    static_assert(sizeof(kTrailColors) / sizeof(kTrailColors[0]) == kSpeedDelay + 1);
 
     // Density reference: kMaxStreams is the count intended for a 1920x1080
     // surface. StreamField scales it by a display's pixel area so density

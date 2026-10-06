@@ -8,22 +8,6 @@ using namespace streamsim;
 
 namespace
 {
-    // Brightness falls off linearly with a stream's advanceDelay (slower
-    // streams are dimmer). Every term here is built from compile-time
-    // constants, so the per-channel increments are constants too -- no reason
-    // to recompute them inside the render loop as the original did.
-    constexpr int kHeadIncR = kHeadR / (kSpeedDelay + 1);
-    constexpr int kHeadIncG = kHeadG / (kSpeedDelay + 1);
-    constexpr int kHeadIncB = kHeadB / (kSpeedDelay + 1);
-
-    // The trailing "dim" glyph one row up is a third as bright, same falloff.
-    constexpr int kDimBaseR = kHeadR / 3;
-    constexpr int kDimBaseG = kHeadG / 3;
-    constexpr int kDimBaseB = kHeadB / 3;
-    constexpr int kDimIncR = kDimBaseR / (kSpeedDelay + 1);
-    constexpr int kDimIncG = kDimBaseG / (kSpeedDelay + 1);
-    constexpr int kDimIncB = kDimBaseB / (kSpeedDelay + 1);
-
     // Distinct seed per StreamField, so multiple displays created in the same
     // second still get independent rain rather than identical patterns.
     uint32_t makeSeed()
@@ -204,9 +188,10 @@ bool StreamField::render()
         const int dimGlyph = 1 + rng_.below(glyphChoices);
 
         // Head: brightest; slower streams (higher advanceDelay) are dimmer.
-        const Uint8 headR = static_cast<Uint8>(kHeadR - s.advanceDelay * kHeadIncR);
-        const Uint8 headG = static_cast<Uint8>(kHeadG - s.advanceDelay * kHeadIncG);
-        const Uint8 headB = static_cast<Uint8>(kHeadB - s.advanceDelay * kHeadIncB);
+        const auto head = kHeadColors[s.advanceDelay];
+        const Uint8 headR = head.r;
+        const Uint8 headG = head.g;
+        const Uint8 headB = head.b;
         if (visible(headPy))
             glyphDraws_.push_back({ { px, headPy, glyphW_, glyphH_ },
                                     headGlyph,
@@ -214,9 +199,10 @@ bool StreamField::render()
                                     headR, headG, headB });
 
         // Trailing dim glyph one row up.
-        const Uint8 dimR = static_cast<Uint8>(kDimBaseR - s.advanceDelay * kDimIncR);
-        const Uint8 dimG = static_cast<Uint8>(kDimBaseG - s.advanceDelay * kDimIncG);
-        const Uint8 dimB = static_cast<Uint8>(kDimBaseB - s.advanceDelay * kDimIncB);
+        const auto trail = kTrailColors[s.advanceDelay];
+        const Uint8 dimR = trail.r;
+        const Uint8 dimG = trail.g;
+        const Uint8 dimB = trail.b;
         if (visible(headPy - glyphH_))
             glyphDraws_.push_back({ { px, headPy - glyphH_, glyphW_, glyphH_ },
                                     dimGlyph,

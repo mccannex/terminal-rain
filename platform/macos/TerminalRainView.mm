@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <chrono>
 #include "zombie_confirmation.h"
+#include "metal_color_space.h"
 #include <unistd.h>
 #include "core/glyph_atlas.h"
 #include "core/stream_field.h"
@@ -215,6 +216,8 @@ static BOOL screenIsLocked(void)
         [self stopForRenderingFailure];
         return;
     }
+
+    setMetalSRGBColorSpace(_renderer);
 
     _atlas = loadGlyphAtlas(_renderer);
     if (!_atlas)

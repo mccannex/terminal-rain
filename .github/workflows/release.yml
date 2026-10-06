@@ -92,7 +92,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTERMINAL_RAIN_BUILD_TESTS=ON -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build
-        run: cmake --build build --target terminal_rain_saver terminal_rain_rendering_tests terminal_rain_zombie_tests
+        run: cmake --build build --target terminal_rain_saver terminal_rain_rendering_tests terminal_rain_zombie_tests terminal_rain_color_tests
 
       - name: Rendering regression checks
         run: ctest --test-dir build --output-on-failure -LE native
