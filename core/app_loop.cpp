@@ -118,29 +118,32 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
         return 1;
     }
 
-    int windowWidth, windowHeight;
-    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-    StreamField field(renderer, atlas, windowWidth, windowHeight, contentScale);
-
-    // Preview mode is a small embedded thumbnail in someone else's dialog,
-    // not an exclusive fullscreen surface -- leave the system cursor alone
-    // there. SDL_ShowCursor is a process-global setting, not per-window.
-    if (!isPreview) SDL_ShowCursor(SDL_DISABLE);
-
-    int motionCount = 0;
-    while (!shouldStop(isPreview, motionCount))
+    // Destroy the field texture before its renderer.
     {
-        Uint32 frameStart = SDL_GetTicks();
+        int windowWidth, windowHeight;
+        SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+        StreamField field(renderer, atlas, windowWidth, windowHeight, contentScale);
 
-        field.tick();
-        SDL_SetRenderTarget(renderer, nullptr);
-        SDL_RenderCopy(renderer, field.targetTexture(), nullptr, nullptr);
-        SDL_RenderPresent(renderer);
+        // Preview mode is a small embedded thumbnail in someone else's dialog,
+        // not an exclusive fullscreen surface -- leave the system cursor alone
+        // there. SDL_ShowCursor is a process-global setting, not per-window.
+        if (!isPreview) SDL_ShowCursor(SDL_DISABLE);
 
-        paceFrame(frameStart);
+        int motionCount = 0;
+        while (!shouldStop(isPreview, motionCount))
+        {
+            Uint32 frameStart = SDL_GetTicks();
+
+            field.tick();
+            SDL_SetRenderTarget(renderer, nullptr);
+            SDL_RenderCopy(renderer, field.targetTexture(), nullptr, nullptr);
+            SDL_RenderPresent(renderer);
+
+            paceFrame(frameStart);
+        }
+
+        if (!isPreview) SDL_ShowCursor(SDL_ENABLE);
     }
-
-    if (!isPreview) SDL_ShowCursor(SDL_ENABLE);
 
     SDL_DestroyTexture(atlas);
     SDL_DestroyRenderer(renderer);
