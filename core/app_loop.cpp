@@ -1,6 +1,7 @@
 #include "app_loop.h"
 #include "glyph_atlas.h"
 #include "stream_field.h"
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -9,6 +10,11 @@ namespace
     // Matches the original's WM_TIMER interval. The other platforms' cadence
     // (SDL) is driven from here; macOS uses ScreenSaverView's own timer.
     constexpr Uint32 kFrameIntervalMs = 50;
+
+    // A thumbnail needs a miniature of the rain, including its glyphs and
+    // trail lengths, rather than native-size cells on a tiny simulation.
+    constexpr int kPreviewCanvasWidth = 320;
+    constexpr int kPreviewWarmupTicks = 600;
 
     // A spurious mouse-motion event is commonly synthesized by the window
     // manager right when a window is created/focused, so require more than a
@@ -124,15 +130,41 @@ int runStreamLoop(SDL_Window* window, bool isPreview, float contentScale)
     {
         int windowWidth, windowHeight;
         SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-        StreamField field(renderer, atlas, windowWidth, windowHeight, contentScale);
+        const int canvasWidth = isPreview ? std::max(kPreviewCanvasWidth, windowWidth) : windowWidth;
+        const int canvasHeight = isPreview
+            ? std::max(1, static_cast<int>(static_cast<long long>(windowHeight) * canvasWidth /
+                                          std::max(1, windowWidth)))
+            : windowHeight;
+        StreamField field(renderer, atlas, canvasWidth, canvasHeight, contentScale, isPreview);
 
         // Preview mode is embedded in someone else's dialog; leave the
         // process-global system cursor alone there.
         if (!field.valid()) result = 1;
+        if (isPreview && result == 0 &&
+            SDL_SetTextureScaleMode(field.targetTexture(), SDL_ScaleModeLinear) != 0)
+        {
+            SDL_Log("Setting preview texture scale mode failed: %s", SDL_GetError());
+            result = 1;
+        }
         if (!isPreview && result == 0) SDL_ShowCursor(SDL_DISABLE);
 
         int motionCount = 0;
-        while (result == 0 && !shouldStop(isPreview, motionCount))
+        bool stopped = false;
+        if (isPreview)
+        {
+            // Prime only the thumbnail, without frame delays. Keep pumping
+            // close events so dismissing the dialog during startup is safe.
+            for (int i = 0; i < kPreviewWarmupTicks && result == 0; ++i)
+            {
+                if (i % 50 == 0 && shouldStop(true, motionCount))
+                {
+                    stopped = true;
+                    break;
+                }
+                if (!field.tick()) result = 1;
+            }
+        }
+        while (result == 0 && !stopped && !shouldStop(isPreview, motionCount))
         {
             Uint32 frameStart = SDL_GetTicks();
 

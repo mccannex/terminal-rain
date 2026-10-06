@@ -100,6 +100,15 @@ This builds the target for the current platform: `Terminal Rain.scr` on Windows,
 `terminal-rain` on Linux. Linux also needs the X11 and Wayland development headers listed in
 [`platform/linux/AGENT_CONTEXT.md`](platform/linux/AGENT_CONTEXT.md).
 
+Rendering regression checks are available with `-DTERMINAL_RAIN_BUILD_TESTS=ON`.
+Build `terminal_rain_rendering_tests`, then run `ctest --test-dir build -C Release
+--output-on-failure`. Windows also runs a hidden-window accelerated-renderer check;
+use `-LE native` on machines without a graphics session. The tests cover preview
+cleanup, render failures, and reset delivery across multiple fields. On a renderer
+reset or rendering failure, the saver stops cleanly rather than continuing with a
+lost persistent image. The release workflows run the checks that do not require a
+graphics session.
+
 ## Terminal font
 
 The original screensaver asked Windows for its built-in "Terminal" font at 12 pixels, which is

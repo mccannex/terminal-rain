@@ -88,6 +88,13 @@ resynced after the 2026-10-05 history rewrite, rebuilt under the new
 
 Open, non-blocking:
 
+- The 2026-10-06 Windows/shared-core pass enabled the allow-screensaver hint
+  here and added clean shutdown on drawing failure or renderer reset, plus
+  off-screen culling. Linux CI now selects Release explicitly and runs the
+  portable rendering checks. Native Linux build, idle activation, display
+  sleep/wake, mixed-DPI output, and dismissal still need rechecking after
+  these changes; the older live verification above predates them.
+
 - The X11 fallback has never run on a real X11 session.
 - No packaging (no .rpm/.deb or install script); the powerdevil script
   points at the built `terminal-rain` binary directly.

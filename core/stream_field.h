@@ -39,8 +39,11 @@ public:
     // contentScale multiplies the glyph cell size so content stays a
     // perceptually consistent physical size across displays of differing
     // pixel density; 1.0 (the default) leaves the atlas's native 8x12 cell.
+    // compactTrails sizes trail/cleanup distances to a thumbnail's height so
+    // invisible heads do not occupy its stream cap for long stretches.
     StreamField(SDL_Renderer* renderer, SDL_Texture* glyphAtlas,
-                int surfaceWidth, int surfaceHeight, float contentScale = 1.0f);
+                int surfaceWidth, int surfaceHeight, float contentScale = 1.0f,
+                bool compactTrails = false);
     ~StreamField();
 
     StreamField(const StreamField&) = delete;
@@ -98,6 +101,9 @@ private:
     int glyphW_;
     int glyphH_;
     int cols_;
+    int backTrace_;
+    int leading_;
+    int spacePad_;
     int despawnRow_;   // headRow past which a stream is recycled
     int maxStreams_;   // active stream cap for this surface
     Rng rng_;

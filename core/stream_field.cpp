@@ -46,7 +46,8 @@ namespace
 }
 
 StreamField::StreamField(SDL_Renderer* renderer, SDL_Texture* glyphAtlas,
-                          int surfaceWidth, int surfaceHeight, float contentScale)
+                          int surfaceWidth, int surfaceHeight, float contentScale,
+                          bool compactTrails)
     : renderer_(renderer)
     , atlas_(glyphAtlas)
     , surfaceWidth_(surfaceWidth)
@@ -54,7 +55,10 @@ StreamField::StreamField(SDL_Renderer* renderer, SDL_Texture* glyphAtlas,
     , glyphW_(std::max(1, static_cast<int>(std::lround(kGlyphW * contentScale))))
     , glyphH_(std::max(1, static_cast<int>(std::lround(kGlyphH * contentScale))))
     , cols_(std::max(1, surfaceWidth / glyphW_))
-    , despawnRow_(surfaceHeight / glyphH_ + kBackTrace)
+    , backTrace_(compactTrails ? std::clamp(surfaceHeight / glyphH_, 1, kBackTrace) : kBackTrace)
+    , leading_(compactTrails ? std::min(kLeading, std::max(1, backTrace_ / 3)) : kLeading)
+    , spacePad_(compactTrails ? std::min(kSpacePad, std::max(1, backTrace_ / 6)) : kSpacePad)
+    , despawnRow_(surfaceHeight / glyphH_ + backTrace_)
     , maxStreams_(scaledStreamCount(surfaceWidth, surfaceHeight))
     , rng_(makeSeed())
     , streams_(maxStreams_)
@@ -185,13 +189,13 @@ bool StreamField::render()
 
         // Opaque black cell-fills: head cell, the dim cell one row up, and the
         // two erase points behind the head (one randomized within the leading
-        // window, one fixed at kBackTrace -- the guaranteed wipe). Queued now,
+        // window, one fixed at backTrace_ -- the guaranteed wipe). Queued now,
         // flushed together below before any glyph is drawn.
-        const int randomErase = rng_.below(kSpacePad + 1) + kLeading;
+        const int randomErase = rng_.below(spacePad_ + 1) + leading_;
         eraseCell(headPy);
         eraseCell(headPy - glyphH_);
         eraseCell(headPy - randomErase * glyphH_);
-        eraseCell(headPy - kBackTrace * glyphH_);
+        eraseCell(headPy - backTrace_ * glyphH_);
 
         // Consume the same random choices even when a glyph is invisible,
         // preserving future visible animation. Below-screen heads still have
