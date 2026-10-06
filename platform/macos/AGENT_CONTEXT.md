@@ -160,5 +160,15 @@ instead of animating invisibly forever. Releases ship via CI
 
 Open, non-blocking:
 
+- The 2026-10-06 Windows/shared-core pass added checked field initialization,
+  per-field SDL reset watches, clean stop on rendering failure, and off-screen
+  culling. This view now observes the field's failure result and stops its
+  timer/resources instead of retrying failed rendering at 20 Hz. The changes
+  have not been built or run on macOS yet. CI/local build instructions now
+  select Release explicitly; CI also runs portable rendering checks. Recheck
+  the bundle build/signing, preview, Retina/multi-display behavior, and normal
+  stop/start on a Mac. Issue #9's zombie confirmation timing remains unchanged
+  and is still pending; the earlier live verification predates these changes.
+
 - The universal build's Intel slice is untested on real hardware.
 - Optional future config sheet (none planned; the defaults are tuned).

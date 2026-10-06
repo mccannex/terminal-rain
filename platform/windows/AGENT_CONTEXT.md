@@ -45,6 +45,19 @@ The preview creates its own SDL window and reparents its HWND with
 `SDL_CreateWindowFrom`; that approach deadlocked the dialog. Preview ignores
 input and leaves the cursor alone; its lifetime belongs to the host.
 
+The dialog thumbnail uses an aspect-matched virtual canvas at least 320 pixels
+wide, scaled down with linear filtering. Its simulation warms up 600 ticks before
+the first presentation so it starts populated. This keeps native glyph/trail
+sizes from making a tiny preview mostly empty; fullscreen rendering is unchanged.
+Preview cleanup/trail distances also scale with the canvas's glyph-row count:
+otherwise streams linger up to 200 rows below a roughly 19-row preview, filling
+its stream cap and producing long dark periods before replacements can spawn.
+At 320x234, a deterministic diagnostic checked ten simulated minutes per seed
+after the 600-tick warm-up (seeds 1, 7, 12345). Original trail distances produced
+zero visible heads at times and runs of fewer than four heads lasting 4-4.45
+seconds. Compact preview trails kept at least 32, 39, and 35 heads visible,
+respectively. The full Windows Release build and both rendering suites passed.
+
 ## Dismissal and testing
 
 Key presses, mouse clicks, scrolling and debounced mouse movement dismiss
@@ -56,6 +69,17 @@ Test the actual `.scr` launch as well as the dialog preview. Check full
 coverage and first-click dismissal on each monitor, then test keyboard,
 scrolling and movement in separate runs. Recheck real idle activation when
 changing integration code.
+
+The 2026-10-06 optimization pass fixed preview texture/renderer destruction
+order, enabled SDL's allow-screensaver hint in both Windows modes, and added
+failure/reset handling to the shared core. A reset ends the saver cleanly.
+Off-screen glyphs and erase cells are culled individually with RNG consumption
+preserved. Windows 10/MinGW Release tests passed using software and Direct3D 11
+rendering, including repeated hidden preview loops, injected creation/binding
+failures, reset notification across fields, and no thread display-required
+request. The actual Settings preview, real display-off timeout/wake behavior,
+physical multi-monitor dismissal, and actual GPU device loss remain manual
+checks. See `docs/optimization_validation.md` for results and reproduction.
 
 Window-position utilities can relocate fullscreen windows and generate
 synthetic motion. Exclude the screensaver from their restoration rules;
