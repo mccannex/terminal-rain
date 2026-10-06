@@ -196,9 +196,9 @@ int runMultiDisplayStreamLoop(std::function<float(int)> getContentScale)
     // SDL_ShowCursor is a process-global setting, not per-window.
     SDL_ShowCursor(SDL_DISABLE);
 
-    // One shared debounce across every window: real mouse movement on any
-    // display closes all of them together (SDL's event queue is already
-    // process-wide, so a single poll covers every window).
+    // Keyboard input, mouse clicks, scrolling or debounced mouse movement on
+    // any display closes all windows together. SDL's event queue is shared,
+    // so one poll and motion counter cover every window.
     int motionCount = 0;
     while (!shouldStop(false, motionCount))
     {

@@ -66,6 +66,9 @@ namespace
 
     int runShow()
     {
+        // Deliver the click that activates a fullscreen window too, so
+        // unfocused monitors dismiss on the first click rather than the second.
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
         if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
         // No per-display content-scale query needed: SDL's HiDPI
