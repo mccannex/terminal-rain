@@ -69,6 +69,8 @@ namespace
         // Deliver the click that activates a fullscreen window too, so
         // unfocused monitors dismiss on the first click rather than the second.
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+        // A screensaver must allow the display's normal idle sleep policy.
+        SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
         if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
         // No per-display content-scale query needed: SDL's HiDPI
@@ -90,6 +92,7 @@ namespace
         int height = clientRect.bottom - clientRect.top;
         if (width <= 0 || height <= 0) return 0;
 
+        SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
         if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
         // parentHwnd belongs to another process/thread (the Display Settings
