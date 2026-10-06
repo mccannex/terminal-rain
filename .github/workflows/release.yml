@@ -56,7 +56,7 @@ jobs:
           key: ${{ runner.os }}-sdl2-deps-release-2.30.9
 
       - name: Configure
-        run: cmake -S . -B build
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       # A bare executable, not a package: the Fedora/KDE integration points
       # powerdevil's idle-script hook straight at it (see
@@ -83,7 +83,7 @@ jobs:
       # The runner is Apple Silicon; the x86_64 slice is cross-compiled and
       # has never been run on real Intel hardware.
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build
         run: cmake --build build --target terminal_rain_saver
