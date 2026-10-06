@@ -45,8 +45,8 @@ The goal is a screensaver that costs almost nothing to leave running.
 
 - **Fixed 20 fps.** Frames run on a 50 ms timer, the same rate as the original. The loop
   subtracts each frame's own work time, so the pace holds steady under load.
-- **Minimal drawing.** The screen texture is never cleared. Each frame, every stream draws 2
-  glyphs and erases 4 cells, and nothing else changes.
+- **Minimal drawing.** The screen texture is never cleared between frames. Only visible
+  glyphs and erase cells enter the draw batches; below-screen streams keep erasing their trails.
 - **Batched rendering.** Each frame's erases go out as one draw call. Glyph draws are sorted by
   color, so the GPU color changes only about 12 times per frame.
 - **Scaled workload.** 3,000 streams at 1920x1080, scaled by screen area (1,875 at 1440x900),
