@@ -4,14 +4,16 @@
 
 int main(int /*argc*/, char* /*argv*/[])
 {
-    // Force native Wayland: SDL's auto-detection picks x11 (XWayland) on this
-    // machine even with a live Wayland session available, and XWayland
-    // composites through its own global virtual-screen scale rather than
-    // true per-output geometry -- multiplying that against KWin's real
-    // per-output scale is what caused wrong (mismatched-per-monitor) glyph
-    // sizing. Native Wayland doesn't have that problem: see the contentScale
-    // comment on runMultiDisplayStreamLoop's call below.
-    setenv("SDL_VIDEODRIVER", "wayland", 1);
+    // Prefer native Wayland when a Wayland session is running: SDL's
+    // auto-detection picks x11 (XWayland) even with a live Wayland session
+    // available, and XWayland composites through its own global
+    // virtual-screen scale rather than true per-output geometry -- multiplying
+    // that against KWin's real per-output scale is what caused wrong
+    // (mismatched-per-monitor) glyph sizing. Native Wayland doesn't have that
+    // problem: see the contentScale comment on runMultiDisplayStreamLoop's
+    // call below. Plain X11 sessions keep SDL's auto-detection, and an
+    // explicit SDL_VIDEODRIVER from the caller always wins (overwrite = 0).
+    if (std::getenv("WAYLAND_DISPLAY")) setenv("SDL_VIDEODRIVER", "wayland", 0);
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {

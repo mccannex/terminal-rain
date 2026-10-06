@@ -41,15 +41,27 @@ FONT_PATH = ROOT / "assets" / "fonts" / "TerminalVector.ttf"
 OUT_DIR = ROOT / "platform" / "macos"
 
 GLYPHS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-WORD = "GLYPHRAIN"
+WORD = "TERMINAL"
 
 # Row each letter's head lands on: 0 = top row, rows - 1 = bottom row (rows
 # is 7 at both the @1x and @2x sizes below). One entry per WORD character --
-# edit freely to re-art-direct the stagger. Clustered near the bottom
-# (rows 4-6) rather than spanning the full height, so the word stays close
-# enough to a straight line to actually read left to right at a glance,
-# while still looking like staggered rain rather than a ruler-straight banner.
-WORD_HEAD_ROWS = [5, 6, 4, 6, 5, 6, 4, 5, 6]
+# edit freely to re-art-direct the stagger. Alternates between two rows so
+# the word reads left to right at a glance while still looking like
+# staggered rain. Kept off the bottom row: the picker tile's rounded corners
+# and edge cropping clip anything drawn there.
+WORD_HEAD_ROWS = [4, 5, 4, 5, 4, 5, 4, 5]
+
+# Base head color, matching kHeadR/G/B in core/stream_field.h, so the tile
+# uses the running saver's green rather than a near-white.
+HEAD_COLOR = (150, 255, 125)
+
+# Tail brightness, as a fraction of HEAD_COLOR: a linear gradient from
+# TAIL_MAX_FADE right behind the head down to TAIL_MIN_FADE at the tail's
+# far end. Ambient (letterless) columns peak lower, at a random value in
+# AMBIENT_MAX_FADE, so they never outshine a word column's tail.
+TAIL_MAX_FADE = 0.45
+TAIL_MIN_FADE = 0.06
+AMBIENT_MAX_FADE = (0.25, 0.35)
 assert len(WORD_HEAD_ROWS) == len(WORD)
 
 BASE_WIDTH = 90
@@ -65,51 +77,49 @@ def render(scale: int) -> Image.Image:
 
     random.seed(42)  # deterministic output -- re-running without a source
                       # change shouldn't churn the committed PNGs in git diffs
-    cols = width // cell
     rows = height // cell
-    word_start_col = max(0, (cols - len(WORD)) // 2)
+    # Center the word horizontally, then fill outward with ambient columns
+    # on both sides. Edge columns may be partly cut off by the image border.
+    word_left = (width - len(WORD) * cell) // 2
+    first_col = -(-word_left // cell)  # ceil: enough columns to reach x = 0
+    last_col = len(WORD) + -(-(width - word_left - len(WORD) * cell) // cell)
 
-    for col in range(cols):
-        x = col * cell
-        word_index = col - word_start_col
+    for col in range(-first_col, last_col):
+        x = word_left + col * cell
+        word_index = col
         is_word_col = 0 <= word_index < len(WORD)
 
         if is_word_col:
             head_row = WORD_HEAD_ROWS[word_index]
-            # Tail length above the fixed head is still randomized, for
-            # texture -- some tails are allowed to run off the top edge.
-            stream_len = random.randint(4, head_row + 5)
+            # Tail reaches the top edge (or one row past it), so the full
+            # brightness gradient is visible rather than cut off mid-fade.
+            stream_len = head_row + 1 + random.randint(0, 1)
             start_row = head_row - stream_len + 1
         else:
             stream_len = random.randint(4, rows)
             start_row = random.randint(-4, max(0, rows - stream_len))
+
+        peak_fade = TAIL_MAX_FADE if is_word_col else random.uniform(*AMBIENT_MAX_FADE)
 
         for i in range(stream_len):
             row = start_row + i
             y = row * cell
             if y < -cell or y > height:
                 continue
-            # Only a word column's own head glyph ever gets full brightness.
-            # A word column's *other* (trailing) glyphs still fade by
-            # distance from its real head, same as the running app. An
-            # ambient column has no head at all -- every glyph in it gets a
-            # flat, low, jittered dimness so nothing in it is ever the
-            # locally-brightest cell competing for attention next to a
-            # letter (the distance-from-head formula would otherwise put its
-            # brightest value exactly at the tip, i.e. right next to a
-            # letter).
+            # Only a word column's own head glyph gets full HEAD_COLOR.
+            # Everything else is a tail glyph, fading linearly from the
+            # column's peak right behind the head (or the tip, for an
+            # ambient column) to TAIL_MIN_FADE at the far end.
             is_word_head = is_word_col and i == stream_len - 1
             if is_word_head:
                 glyph = WORD[word_index]
-                color = (200, 255, 200)  # bright head, matches StreamField's head color
-            elif is_word_col:
-                glyph = random.choice(GLYPHS)
-                fade = max(0.15, 1.0 - (stream_len - 1 - i) / stream_len)
-                color = (int(60 * fade), int(220 * fade), int(110 * fade))
+                fade = 1.0
             else:
                 glyph = random.choice(GLYPHS)
-                fade = random.uniform(0.15, 0.4)
-                color = (int(60 * fade), int(220 * fade), int(110 * fade))
+                tail_len = stream_len - 1 if is_word_col else stream_len
+                t = (i + 1) / tail_len  # 1.0 at the brightest tail cell
+                fade = TAIL_MIN_FADE + (peak_fade - TAIL_MIN_FADE) * t
+            color = tuple(int(c * fade) for c in HEAD_COLOR)
             draw.text((x, y), glyph, font=font, fill=color)
     return img
 

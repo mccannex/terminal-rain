@@ -27,12 +27,12 @@ jobs:
         run: cmake -S . -B build
 
       - name: Build
-        run: cmake --build build --config Release --target glyph_rain
+        run: cmake --build build --config Release --target terminal_rain
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Glyph Rain-windows
-          path: build/Release/Glyph Rain.scr
+          name: Terminal Rain-windows
+          path: build/Release/Terminal Rain.scr
 
   linux:
     runs-on: ubuntu-latest
@@ -58,20 +58,16 @@ jobs:
       - name: Configure
         run: cmake -S . -B build
 
-      # No dedicated Linux packaging target exists yet (see
-      # platform/linux/AGENT_CONTEXT.md's "Build setup" section -- it's a
-      # documented, still-open loose end, not an oversight here): the real
-      # Fedora/KDE integration currently points powerdevil's launcher script
-      # straight at this same glyph_rain_dev binary. This artifact is that
-      # raw dev binary, not an installer -- named accordingly below so
-      # nobody mistakes it for a finished package.
+      # A bare executable, not a package: the Fedora/KDE integration points
+      # powerdevil's idle-script hook straight at it (see
+      # platform/linux/AGENT_CONTEXT.md).
       - name: Build
-        run: cmake --build build --target glyph_rain_dev
+        run: cmake --build build --target terminal_rain
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Glyph Rain-linux-dev-binary
-          path: build/glyph_rain_dev
+          name: Terminal Rain-linux
+          path: build/terminal-rain
 
   macos:
     runs-on: macos-latest
@@ -83,15 +79,16 @@ jobs:
           path: build/_deps
           key: ${{ runner.os }}-sdl2-deps-release-2.30.9
 
+      # Universal (arm64 + x86_64) so Intel Macs can load the bundle too.
+      # The runner is Apple Silicon; the x86_64 slice is cross-compiled and
+      # has never been run on real Intel hardware.
       - name: Configure
-        run: cmake -S . -B build
+        run: cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build
-        run: cmake --build build --target glyph_rain_saver
+        run: cmake --build build --target terminal_rain_saver
 
-      # macos-latest runners are Apple Silicon, so this is an arm64-only
-      # build -- no CMAKE_OSX_ARCHITECTURES universal-binary flag set, so an
-      # Intel Mac would not be able to run this artifact. Same ad-hoc
+      # Same ad-hoc
       # codesign POST_BUILD step as local dev builds (see CMakeLists.txt);
       # no paid Apple Developer identity or notarization involved here (a
       # deliberate choice, see platform/macos/AGENT_CONTEXT.md). A browser
@@ -103,15 +100,15 @@ jobs:
       #
       # ditto (not zip) preserves the .saver bundle's code signature and
       # extended attributes correctly -- Apple's documented way to compress
-      # a bundle for distribution. --keepParent keeps "Glyph Rain.saver" as
+      # a bundle for distribution. --keepParent keeps "Terminal Rain.saver" as
       # the archived folder itself, not its contents dumped at the zip root.
       - name: Package bundle
-        run: ditto -c -k --sequesterRsrc --keepParent "build/Glyph Rain.saver" "Glyph Rain-macOS.zip"
+        run: ditto -c -k --sequesterRsrc --keepParent "build/Terminal Rain.saver" "Terminal Rain-macOS.zip"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Glyph Rain-macos
-          path: Glyph Rain-macOS.zip
+          name: Terminal Rain-macos
+          path: Terminal Rain-macOS.zip
 
   release:
     needs: [windows, linux, macos]
@@ -135,6 +132,6 @@ jobs:
         with:
           body_path: .github/RELEASE_NOTES.md
           files: |
-            Glyph Rain-windows/**
-            Glyph Rain-linux-dev-binary/**
-            Glyph Rain-macos/**
+            Terminal Rain-windows/**
+            Terminal Rain-linux/**
+            Terminal Rain-macos/**
