@@ -164,11 +164,21 @@ Open, non-blocking:
   per-field SDL reset watches, clean stop on rendering failure, and off-screen
   culling. This view now observes the field's failure result and stops its
   timer/resources instead of retrying failed rendering at 20 Hz. The changes
-  have not been built or run on macOS yet. CI/local build instructions now
+  have now been built on macOS; native host runtime checks remain pending. CI/local build instructions now
   select Release explicitly; CI also runs portable rendering checks. Recheck
   the bundle build/signing, preview, Retina/multi-display behavior, and normal
-  stop/start on a Mac. Issue #9's zombie confirmation timing remains unchanged
-  and is still pending; the earlier live verification predates these changes.
+  stop/start on a Mac. Issue #9 now latches qualifying input with monotonic timing. Locked frames
+  cancel pending confirmation; the first unlocked observation of post-grace
+  input starts a fresh two-second window, including when the lock flag clears
+  late after a single input. Start/stop reset the state. Grace-only dismissal
+  remains indistinguishable from hot-corner input and is intentionally ignored.
+  The Release arm64 bundle and portable rendering/timing tests were built and
+  passed on this Mac on 2026-10-06; its ad-hoc signature verified. The native
+  hidden-window Metal rendering/readback and synthetic-reset test also passed. Two real fullscreen host runs also passed: locked animation, physical dismissal
+  and post-unlock process death, with single input and with continuous activity
+  (HID idle 0.01s at termination). The rebuilt saver remains installed. Preview,
+  multi-display and naturally delivered healthy stop/start checks remain pending;
+  see docs/optimization_validation.md for observed process timing and limits.
 
 - The universal build's Intel slice is untested on real hardware.
 - Optional future config sheet (none planned; the defaults are tuned).

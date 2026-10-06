@@ -27,7 +27,7 @@ jobs:
         run: cmake -S . -B build -DTERMINAL_RAIN_BUILD_TESTS=ON
 
       - name: Build
-        run: cmake --build build --config Release --target terminal_rain terminal_rain_rendering_tests
+        run: cmake --build build --config Release --target terminal_rain terminal_rain_rendering_tests terminal_rain_zombie_tests
 
       - name: Rendering regression checks
         run: ctest --test-dir build -C Release --output-on-failure -LE native
@@ -65,7 +65,7 @@ jobs:
       # powerdevil's idle-script hook straight at it (see
       # platform/linux/AGENT_CONTEXT.md).
       - name: Build
-        run: cmake --build build --target terminal_rain terminal_rain_rendering_tests
+        run: cmake --build build --target terminal_rain terminal_rain_rendering_tests terminal_rain_zombie_tests
 
       - name: Rendering regression checks
         run: ctest --test-dir build --output-on-failure -LE native
@@ -92,7 +92,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTERMINAL_RAIN_BUILD_TESTS=ON -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build
-        run: cmake --build build --target terminal_rain_saver terminal_rain_rendering_tests
+        run: cmake --build build --target terminal_rain_saver terminal_rain_rendering_tests terminal_rain_zombie_tests
 
       - name: Rendering regression checks
         run: ctest --test-dir build --output-on-failure -LE native
