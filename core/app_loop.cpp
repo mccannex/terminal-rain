@@ -25,19 +25,29 @@ namespace
     }
 
     // Drains SDL's (process-wide) event queue and reports whether the loop
-    // should stop: on SDL_QUIT, or real mouse motion past the debounce.
-    // Preview windows ignore motion -- their lifetime is owned by the host
-    // dialog, and the cursor merely passing over a small thumbnail shouldn't
-    // dismiss it.
+    // should stop: on SDL_QUIT, explicit keyboard/mouse input, or real mouse
+    // motion past the debounce. Preview windows ignore input -- their lifetime
+    // is owned by the host dialog, and interacting with a small thumbnail
+    // shouldn't dismiss it.
     bool shouldStop(bool isPreview, int& motionCount)
     {
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
             if (event.type == SDL_QUIT) return true;
-            if (!isPreview && event.type == SDL_MOUSEMOTION)
+            if (!isPreview)
             {
-                if (++motionCount > kMotionEventThreshold) return true;
+                if (event.type == SDL_KEYDOWN ||
+                    event.type == SDL_MOUSEBUTTONDOWN ||
+                    event.type == SDL_MOUSEWHEEL)
+                {
+                    return true;
+                }
+                if (event.type == SDL_MOUSEMOTION &&
+                    ++motionCount > kMotionEventThreshold)
+                {
+                    return true;
+                }
             }
         }
         return false;

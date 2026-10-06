@@ -31,8 +31,8 @@ integration (deliberate: no session locking wanted). Instead:
   around `build/linux/terminal-rain`.
 - powerdevil launches it once at the idle threshold; the app exits itself on
   mouse movement via the motion-event debounce in `core/app_loop.cpp`
-  (shared with Windows). Key presses and clicks don't dismiss it yet. No
-  lifecycle management needed.
+  (shared with Windows), as well as on key presses, mouse clicks, and
+  scrolling. No lifecycle management needed.
 
 ## Build (Fedora)
 
@@ -82,22 +82,12 @@ Wayland layout:
 **Done and live-tested on the real machine** (not WSL): installs through
 the powerdevil KCM, activates on its real idle timer, animates correctly
 across all four displays with consistent glyph size, exits cleanly on mouse
-movement.
-
-Pending on this machine (from the 2026-10-05 changes, made on macOS):
-
-- History was rewritten on GitHub to remove commit attribution lines. Run
-  `git fetch && git reset --hard origin/main` before working here.
-- The binary was renamed from `terminal_rain_dev` to `terminal-rain`.
-  Rebuild, then point `~/.local/bin/terminal-rain-screensaver.sh` at
-  `build/linux/terminal-rain`.
-- The Wayland preference logic changed (see above). Re-verify on the
-  4-monitor layout after rebuilding.
+movement, key presses, mouse clicks, and scrolling. The local checkout was
+resynced after the 2026-10-05 history rewrite, rebuilt under the new
+`terminal-rain` binary name, and the powerdevil wrapper now points at it.
 
 Open, non-blocking:
 
-- Exit on key presses and clicks, not only mouse movement (shared with
-  Windows, in `shouldStop` in `core/app_loop.cpp`).
 - The X11 fallback has never run on a real X11 session.
 - No packaging (no .rpm/.deb or install script); the powerdevil script
   points at the built `terminal-rain` binary directly.
