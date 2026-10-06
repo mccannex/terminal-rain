@@ -25,7 +25,7 @@ Baseline: `3b00f06def7c740c1caaeec8490c5dcd9873597e` (reviewed for issue #4).
   Release. All release jobs now build/run the portable regression checks; Windows
   continues to select Release with its multi-configuration build command. Linux
   and macOS CI/native builds have not been run for this working-tree change.
-- #9: macOS zombie confirmation timing is unchanged; address it on a Mac.
+- #9: macOS zombie confirmation now starts at the first unlocked qualifying observation and uses a fixed two-second window, so sustained input cannot postpone shutdown. Automated timing/rendering checks and two real fullscreen host runs passed; grace-only dismissal remains intentionally ambiguous. Native preview, multi-display, naturally delivered healthy stop/start, delayed lock-state clearing, actual GPU loss, and Intel hardware remain unverified.
 
 ## Executed checks
 

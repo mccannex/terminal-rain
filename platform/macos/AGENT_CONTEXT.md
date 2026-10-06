@@ -164,10 +164,12 @@ Open, non-blocking:
   per-field SDL reset watches, clean stop on rendering failure, and off-screen
   culling. This view now observes the field's failure result and stops its
   timer/resources instead of retrying failed rendering at 20 Hz. The changes
-  have now been built on macOS; native host runtime checks remain pending. CI/local build instructions now
-  select Release explicitly; CI also runs portable rendering checks. Recheck
-  the bundle build/signing, preview, Retina/multi-display behavior, and normal
-  stop/start on a Mac. Issue #9 now latches qualifying input with monotonic timing. Locked frames
+  have now been built on macOS; remaining native checks are true preview hosting,
+  multi-display behavior, naturally delivered healthy stop/start, artificially
+  delayed lock-state clearing, and actual GPU loss. CI/local build instructions
+  now select Release explicitly; CI also runs portable rendering checks. The
+  arm64 bundle/signature, single-display fullscreen host runs, and synthetic
+  Metal rendering checks passed on this Mac. Issue #9 now latches qualifying input with monotonic timing. Locked frames
   cancel pending confirmation; the first unlocked observation of post-grace
   input starts a fresh two-second window, including when the lock flag clears
   late after a single input. Start/stop reset the state. Grace-only dismissal
