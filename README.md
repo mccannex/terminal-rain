@@ -1,7 +1,6 @@
 # Terminal Rain
 
-<!-- PLACEHOLDER: animated preview of the screensaver goes here, e.g.
-![Terminal Rain screensaver](docs/terminal-rain.gif) -->
+![Terminal Rain screensaver](docs/terminal-rain.gif)
 
 > "Unfortunately, no one can be told what the Matrix is. You have to see it for yourself." - Morpheus, *The Matrix* (1999)
 

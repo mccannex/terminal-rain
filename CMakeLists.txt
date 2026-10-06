@@ -37,6 +37,15 @@ target_link_libraries(terminal_rain_core PUBLIC SDL2::SDL2-static)
 target_include_directories(terminal_rain_core PUBLIC ${CMAKE_SOURCE_DIR})
 target_compile_options(terminal_rain_core PRIVATE ${TERMINAL_RAIN_WARNINGS})
 
+# Offline frame capture for the README's animated preview (see
+# tools/make_preview.py). Off by default; not part of any release.
+option(TERMINAL_RAIN_BUILD_TOOLS "Build the preview capture tool" OFF)
+if(TERMINAL_RAIN_BUILD_TOOLS)
+    add_executable(terminal_rain_capture tools/capture/main.cpp)
+    target_link_libraries(terminal_rain_capture PRIVATE terminal_rain_core SDL2::SDL2-static SDL2::SDL2main)
+    target_compile_options(terminal_rain_capture PRIVATE ${TERMINAL_RAIN_WARNINGS})
+endif()
+
 if(UNIX AND NOT APPLE)
     # Plain fullscreen executable, launched by KDE's powerdevil idle hook --
     # Linux has no .scr/.saver-style screensaver plugin convention. See
