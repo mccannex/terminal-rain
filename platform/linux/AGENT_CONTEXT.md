@@ -30,9 +30,8 @@ integration (deliberate: no session locking wanted). Instead:
   `~/.local/bin/terminal-rain-screensaver.sh`, a one-line `exec` wrapper
   around `build/linux/terminal-rain`.
 - powerdevil launches it once at the idle threshold; the app exits itself on
-  mouse movement via the motion-event debounce in `core/app_loop.cpp`
-  (shared with Windows), as well as on key presses, mouse clicks, and
-  scrolling. No lifecycle management needed.
+  key presses, mouse clicks, scrolling or debounced mouse movement through
+  `core/app_loop.cpp` (shared with Windows). No lifecycle management needed.
 
 ## Build (Fedora)
 
@@ -50,7 +49,8 @@ cmake --build build/linux -j$(nproc)
 Keep *both* the X11 and Wayland dev-header sets installed: with headers
 missing, SDL2 configures successfully but silently builds with every video
 driver off. Sanity-check with `./build/linux/terminal-rain` (should render
-and exit cleanly on mouse movement).
+and exit cleanly on key presses, mouse clicks, scrolling and mouse movement,
+tested in separate launches).
 
 ## HiDPI / multi-monitor: done, don't regress
 

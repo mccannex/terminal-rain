@@ -67,6 +67,7 @@ Release file sizes (v1.0.4): Windows `.scr` about 1.9 MB, macOS bundle about 0.7
 ## Platforms
 
 - **Windows**: download `Terminal Rain.scr`, right-click it and choose **Install**.
+  Build and maintenance details: [`platform/windows/AGENT_CONTEXT.md`](platform/windows/AGENT_CONTEXT.md).
 - **macOS 26 or later**: install with the `curl` command in the
   [release notes](.github/RELEASE_NOTES.md). The bundle isn't notarized by Apple, so a
   browser download gets blocked by Gatekeeper. Release builds are universal, but the Intel
@@ -75,7 +76,15 @@ Release file sizes (v1.0.4): Windows `.scr` about 1.9 MB, macOS bundle about 0.7
   Management "run script" idle action. Tested on Wayland. Details:
   [`platform/linux/AGENT_CONTEXT.md`](platform/linux/AGENT_CONTEXT.md).
 
-On Windows and Linux, the screensaver currently exits on mouse movement only.
+On Windows and Linux, the screensaver exits on keyboard input, mouse clicks,
+scrolling or mouse movement.
+
+On Windows, window-position utilities such as PersistentWindows can relocate
+the screensaver windows, leaving a monitor uncovered or causing an immediate
+exit through synthetic mouse movement. If this happens, pause the utility's
+automatic restoration to confirm the conflict, then exclude `Terminal Rain.scr`
+from restoration. PersistentWindows supports the `-ignore_process` option; see
+its [documentation](https://github.com/kangyu-california/PersistentWindows/blob/master/Help.md).
 
 ## Building
 
