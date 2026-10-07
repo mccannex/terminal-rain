@@ -52,7 +52,10 @@ Linux binary. Key decisions, all still in force:
   platforms use (`kFrameIntervalMs` in `core/app_loop.cpp`). Retina drawable
   sizing comes free from SDL's Cocoa backend, with no manual scale handling.
 - **Re-signing on thumbnail changes.** The ad-hoc `codesign` step is a
-  `POST_BUILD` command, which only runs when the module relinks. The
+  `POST_BUILD` command that explicitly copies the thumbnails before signing
+  and verifies the finished bundle. Automatic CMake bundle resource copies
+  can run after `POST_BUILD` with some generators, leaving thumbnails outside
+  the resource seal. The command only runs when the module relinks. The
   thumbnails are listed as `LINK_DEPENDS` so a thumbnail-only change still
   relinks and re-signs. Without that, the bundle fails `codesign -v` with
   "a sealed resource is missing or invalid".

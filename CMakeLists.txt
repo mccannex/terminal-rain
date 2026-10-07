@@ -130,8 +130,9 @@ if(APPLE)
     set(macos_saver_thumbnails
         platform/macos/thumbnail.png
         platform/macos/thumbnail@2x.png)
-    set_source_files_properties(${macos_saver_thumbnails} PROPERTIES
-        MACOSX_PACKAGE_LOCATION Resources)
+    # Copy resources explicitly before signing. Some generators schedule
+    # MACOSX_PACKAGE_LOCATION copies after POST_BUILD, invalidating the seal.
+    set_source_files_properties(${macos_saver_thumbnails} PROPERTIES HEADER_FILE_ONLY TRUE)
 
     add_library(terminal_rain_saver MODULE platform/macos/TerminalRainView.mm ${macos_saver_thumbnails})
     target_compile_options(terminal_rain_saver PRIVATE -fobjc-arc ${TERMINAL_RAIN_WARNINGS})
@@ -149,7 +150,15 @@ if(APPLE)
     # ~/Library/Screen Savers -- see platform/macos/AGENT_CONTEXT.md for what
     # a real notarized distribution build would need on top of this.
     add_custom_command(TARGET terminal_rain_saver POST_BUILD
-        COMMAND codesign --force --deep --sign - $<TARGET_BUNDLE_DIR:terminal_rain_saver>)
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_BUNDLE_DIR:terminal_rain_saver>/Contents/Resources"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/platform/macos/thumbnail.png
+            ${CMAKE_SOURCE_DIR}/platform/macos/thumbnail@2x.png
+            "$<TARGET_BUNDLE_DIR:terminal_rain_saver>/Contents/Resources"
+        COMMAND codesign --force --deep --sign - $<TARGET_BUNDLE_DIR:terminal_rain_saver>
+        COMMAND codesign --verify --deep --strict $<TARGET_BUNDLE_DIR:terminal_rain_saver>
+        VERBATIM)
     # POST_BUILD only runs when the module relinks. Without this, changing
     # only a thumbnail recopies it into the already-signed bundle and breaks
     # the signature ("a sealed resource is missing or invalid").
