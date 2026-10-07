@@ -2,11 +2,22 @@
 
 - **Windows**: download `Terminal Rain.scr`. Right-click it and choose **Install**, or
   double-click to preview it first.
-- **macOS**: paste a short script into Terminal — see below. Don't download the zip
+- **macOS 26 or later**: paste a short script into Terminal — see below. Don't download the zip
   through your browser first; that's what causes the "damaged" error some people hit.
-- **Linux**: `terminal-rain` is a bare executable, not an installer yet — see
+  The bundle is universal (Apple Silicon and Intel), but the Intel build is untested
+  on real hardware.
+- **Linux (KDE Plasma)**: `terminal-rain` is a bare executable, not an installer yet — see
   [`platform/linux/AGENT_CONTEXT.md`](https://github.com/mccannex/terminal-rain/blob/main/platform/linux/AGENT_CONTEXT.md)
-  for how it's wired into KDE's Power Management idle-script hook.
+  for how it's wired into KDE's Power Management "run script" idle action. Tested on Wayland.
+
+### Windows troubleshooting
+
+Window-position utilities such as PersistentWindows can relocate the screensaver
+windows, leaving a monitor uncovered or causing an immediate exit through synthetic
+mouse movement. If this happens, pause the utility's automatic restoration to confirm
+the conflict, then exclude `Terminal Rain.scr` from restoration. PersistentWindows
+supports the `-ignore_process` option; see its
+[documentation](https://github.com/kangyu-california/PersistentWindows/blob/master/Help.md).
 
 ### macOS install
 

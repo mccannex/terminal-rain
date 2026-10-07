@@ -1,0 +1,7 @@
+# Keep text files consistent across Windows, macOS, and Linux.
+* text=auto eol=lf
+
+# Preserve binary assets byte for byte.
+*.ttf -text
+*.png -text
+*.gif -text
