@@ -97,6 +97,9 @@ jobs:
       - name: Rendering regression checks
         run: ctest --test-dir build --output-on-failure -LE native
 
+      - name: Verify bundle signature
+        run: codesign --verify --deep --strict --verbose=2 "build/Terminal Rain.saver"
+
       # Same ad-hoc
       # codesign POST_BUILD step as local dev builds (see CMakeLists.txt);
       # no paid Apple Developer identity or notarization involved here (a
@@ -112,7 +115,13 @@ jobs:
       # a bundle for distribution. --keepParent keeps "Terminal Rain.saver" as
       # the archived folder itself, not its contents dumped at the zip root.
       - name: Package bundle
-        run: ditto -c -k --sequesterRsrc --keepParent "build/Terminal Rain.saver" "Terminal Rain-macOS.zip"
+        run: |
+          set -euo pipefail
+          ditto -c -k --sequesterRsrc --keepParent "build/Terminal Rain.saver" "Terminal Rain-macOS.zip"
+          extracted=$(mktemp -d)
+          trap 'rm -rf "$extracted"' EXIT
+          ditto -x -k "Terminal Rain-macOS.zip" "$extracted"
+          codesign --verify --deep --strict --verbose=2 "$extracted/Terminal Rain.saver"
 
       - uses: actions/upload-artifact@v4
         with:
