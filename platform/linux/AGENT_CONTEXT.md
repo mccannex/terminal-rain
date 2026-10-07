@@ -91,13 +91,20 @@ Open, non-blocking:
 - The 2026-10-06 Windows/shared-core pass enabled the allow-screensaver hint
   here and added clean shutdown on drawing failure or renderer reset, plus
   off-screen culling. Linux CI now selects Release explicitly and runs the
-  portable rendering checks. In the subsequent cross-machine follow-up, the
-  user explicitly tested the updated saver on native Wayland with monitor
-  shutdown timeouts: the monitors powered off while it ran, and moving the
-  mouse restored the desktops as expected. This confirms the display-off and
-  wake/dismissal portion of issue #6 on that session. Automatic idle-hook
-  activation and mixed-DPI output were not separately reported in this follow-up;
-  the older live verification above predates the optimization changes.
+  portable rendering checks. On 2026-10-06, the updated Release build and both
+  opt-in regression tests passed on this Fedora machine. The real KDE launcher
+  stayed active across the four-output Wayland layout (three 100% displays and
+  the 125% laptop panel) and remained running through a forced five-second
+  DPMS off/on cycle before being stopped manually. A person-observed follow-up
+  confirmed correct four-display coverage and mixed-DPI rendering, plus clean
+  dismissal by keyboard, deliberate mouse movement, click, scroll, and the
+  first click on a non-primary monitor. With KDE's AC display-off timeout
+  temporarily shortened from 30 minutes to one minute, all displays powered
+  off while the saver was running; deliberate mouse movement woke the displays,
+  dismissed the saver, and returned to a healthy desktop. Automatic and repeat
+  idle activation were not directly re-observed; those KDE-managed launch paths
+  were accepted based on the successful configured launcher checks. The older
+  live verification above predates these changes.
 
 - The X11 fallback has never run on a real X11 session.
 - No packaging (no .rpm/.deb or install script); the powerdevil script
