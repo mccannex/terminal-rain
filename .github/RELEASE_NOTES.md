@@ -1,3 +1,24 @@
+## What's new in v1.1.0
+
+- **Terminal Rain replaces Glyph Rain.** Updated names, documentation, and an
+  animated preview using the new palette.
+- **Less rendering work.** Invisible glyphs and erase cells are skipped before
+  batching and sorting, with visible trails and animation timing preserved.
+  Release builds now explicitly enable compiler optimizations on every platform.
+- **Display sleep works normally.** Windows and Linux no longer inhibit the
+  configured display-off timeout while the screensaver runs.
+- **More reliable cleanup.** Corrected Windows preview resource teardown and
+  added clean shutdown on rendering failures and renderer-reset notifications.
+  macOS background cleanup now completes even during continuous input.
+- **Better previews and display support.** Improved Windows settings-preview
+  density, display-area scaling, and universal macOS builds for Apple Silicon
+  and Intel. Intel hardware remains untested.
+- **Refined colors.** A tuned shared palette with explicit sRGB tagging for macOS
+  Metal output and the animated preview.
+- **Expanded regression coverage.** Automated rendering and cleanup checks,
+  supplemented by native Windows, Linux Wayland, and Apple Silicon verification.
+  Actual GPU resource loss and Linux X11 remain untested.
+
 ## Installing
 
 - **Windows**: download `Terminal Rain.scr`. Right-click it and choose **Install**, or

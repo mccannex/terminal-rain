@@ -1,7 +1,7 @@
 name: Release builds
 
-# Tag push (v*) publishes a GitHub Release with all three platform artifacts
-# attached. workflow_dispatch lets the matrix be run/inspected without
+# Tag push (v*) creates a draft GitHub Release with all three platform artifacts
+# attached for testing before publication. workflow_dispatch lets the matrix be run/inspected without
 # cutting a real tag first.
 on:
   push:
@@ -136,9 +136,12 @@ jobs:
       # section for the full story). Without this, a normal user downloading
       # the zip through their browser hits a misleading "damaged" error with
       # no obvious next step.
-      - name: Create release
+      - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
+          name: Terminal Rain ${{ github.ref_name }}
+          draft: true
+          fail_on_unmatched_files: true
           body_path: .github/RELEASE_NOTES.md
           files: |
             Terminal Rain-windows/**
