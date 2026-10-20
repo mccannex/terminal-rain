@@ -57,6 +57,9 @@ machines. I like it a lot. Maybe you'll like it too.
 - **Clean shutdown on rendering failures.** Failed graphics initialization, rendering errors,
   and renderer-reset notifications stop the animation rather than leaving it drawing with
   invalid resources.
+- **Fullscreen duplicate protection.** Linux and Windows reject overlapping fullscreen
+  launches; macOS reserves each fullscreen display independently, preserving previews
+  and views on other monitors. Ownership releases automatically after exit or a crash.
 - **macOS background cleanup.** Watchdogs address cases where macOS leaves a dismissed
   screensaver running invisibly. Continued typing or mouse activity no longer postpones cleanup.
 - **Automated regression checks.** Tests cover rendering failures, reset delivery across

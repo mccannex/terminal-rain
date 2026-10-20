@@ -112,3 +112,26 @@ Open, non-blocking:
 - Idea only, not started: a user-configurable "master scale" multiplier on
   top of the per-monitor auto-scaling (the laptop panel's normalized size
   runs slightly larger than preferred).
+
+## Fullscreen ownership (2026-10-19)
+
+Linux now acquires a nonblocking per-user fullscreen lease before SDL video
+initialization. Duplicate launches log and return success; lock errors log and
+return failure. The kernel releases ownership on normal exit or crash; never
+unlink the lock file while a saver may be running. The lock lives in
+XDG_RUNTIME_DIR, with a user-qualified /tmp fallback. This prevents accumulation
+but does not diagnose why KDE might launch overlapping copies.
+
+Investigation: the prior binary allowed two simultaneous processes; deliberate
+mouse movement dismissed both normally. A saved October 15 crash occurred in
+SDL 2.30.9 window destruction after display lookup failed. Severe system swap
+use was recorded around that time, but no retained process census establishes
+screensaver accumulation as its cause. That display-cleanup crash remains a
+separate unresolved issue. Automated lease tests cover process exclusion,
+independent scopes, normal/crash release, and same-process display exclusion.
+
+The separate Fedora Release build passed fullscreen_lease, fullscreen_launch,
+rendering, and zombie_confirmation on 2026-10-19. The Linux entry-point test
+rejected eight duplicate launches before video initialization, kept the owner
+alive, and reacquired after SIGKILL. No visible window was opened by these checks.
+See docs/fullscreen_ownership.md for reproduction and native-platform gaps.

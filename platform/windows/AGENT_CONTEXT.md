@@ -113,3 +113,12 @@ Window-position utilities can relocate fullscreen windows and generate
 synthetic motion. Exclude the screensaver from their restoration rules;
 for PersistentWindows, use `-ignore_process "Terminal Rain.scr"`
 ([help](https://github.com/kangyu-california/PersistentWindows/blob/master/Help.md)).
+
+## Fullscreen ownership (2026-10-19)
+
+Only /s takes a nonblocking session-local named mutex, before SDL initialization.
+A second fullscreen launch returns success without opening windows; configure
+and preview modes bypass the mutex. Normal exit releases it; abandoned ownership
+is accepted after a crash. The session-wide scope covers the saver and ordinary
+desktop within the same login. Native Windows compilation and preview/fullscreen
+coexistence must be verified on Windows; Linux tests cannot establish those.

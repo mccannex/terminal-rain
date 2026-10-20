@@ -5,6 +5,7 @@
 #include <cctype>
 #include <string>
 #include "core/app_loop.h"
+#include "core/fullscreen_lease.h"
 
 // Standard Win32 screensaver command-line convention (4.0+):
 //   /s          run fullscreen (the actual screensaver)
@@ -66,6 +67,15 @@ namespace
 
     int runShow()
     {
+        FullscreenLease lease;
+        const auto ownership = lease.acquire("session");
+        if (ownership != FullscreenLease::Result::Acquired)
+        {
+            SDL_Log("Fullscreen launch skipped: %s", ownership == FullscreenLease::Result::Busy
+                ? "another Terminal Rain presentation is running" : "cannot acquire fullscreen ownership");
+            return ownership == FullscreenLease::Result::Busy ? 0 : 1;
+        }
+
         // Deliver the click that activates a fullscreen window too, so
         // unfocused monitors dismiss on the first click rather than the second.
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");

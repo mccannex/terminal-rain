@@ -1,9 +1,19 @@
 #include <SDL.h>
 #include <cstdlib>
 #include "core/app_loop.h"
+#include "core/fullscreen_lease.h"
 
 int main(int /*argc*/, char* /*argv*/[])
 {
+    FullscreenLease lease;
+    const auto ownership = lease.acquire("session");
+    if (ownership != FullscreenLease::Result::Acquired)
+    {
+        SDL_Log("Fullscreen launch skipped: %s", ownership == FullscreenLease::Result::Busy
+            ? "another Terminal Rain presentation is running" : "cannot acquire fullscreen ownership");
+        return ownership == FullscreenLease::Result::Busy ? 0 : 1;
+    }
+
     // Prefer native Wayland when a Wayland session is running: SDL's
     // auto-detection picks x11 (XWayland) even with a live Wayland session
     // available, and XWayland composites through its own global

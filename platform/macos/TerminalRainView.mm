@@ -8,6 +8,7 @@
 #include "metal_color_space.h"
 #include <unistd.h>
 #include "core/glyph_atlas.h"
+#include "core/fullscreen_lease.h"
 #include "core/stream_field.h"
 
 // legacyScreenSaver (the host process System Settings' screensaver picker
@@ -95,6 +96,8 @@ static BOOL screenIsLocked(void)
 
 @implementation TerminalRainView
 {
+    FullscreenLease _fullscreenLease;
+    NSNumber* _leasedDisplay;
     SDL_Window* _window;
     SDL_Renderer* _renderer;
     SDL_Texture* _atlas;
@@ -179,7 +182,40 @@ static BOOL screenIsLocked(void)
 
 - (void)setUpIfNeeded
 {
-    if (_window || _permanentlyStopped) return;
+    if (_permanentlyStopped) return;
+
+    // The host creates one view per monitor, sometimes in separate processes.
+    // Settings also uses isPreview=NO for its smaller embedded canvas: only
+    // display-sized views participate, and true previews never take a lease.
+    NSScreen* screen = self.window.screen;
+    if (!self.window || !screen) return; // Wait until the host attaches the view.
+    const NSSize size = self.bounds.size;
+    const NSSize displaySize = screen.frame.size;
+    if (!self.isPreview && size.width >= displaySize.width && size.height >= displaySize.height)
+    {
+        NSNumber* display = screen.deviceDescription[@"NSScreenNumber"];
+        if (!display || (_leasedDisplay && ![_leasedDisplay isEqual:display]))
+        {
+            os_log(saverLog(), "fullscreen display unavailable or changed; stopping view");
+            _permanentlyStopped = YES;
+            [self stopAnimation];
+            return;
+        }
+        const auto ownership = _fullscreenLease.acquire(
+            "display-" + std::to_string(display.unsignedIntValue),
+            NSTemporaryDirectory().fileSystemRepresentation);
+        if (ownership != FullscreenLease::Result::Acquired)
+        {
+            os_log(saverLog(), "fullscreen ownership unavailable: display=%u busy=%d",
+                   display.unsignedIntValue, ownership == FullscreenLease::Result::Busy);
+            _permanentlyStopped = YES;
+            [self stopAnimation]; // Do not exit a host containing healthy sibling views.
+            return;
+        }
+        _leasedDisplay = display;
+    }
+
+    if (_window) return;
 
     static dispatch_once_t onceToken;
     static int initResult;
@@ -250,11 +286,21 @@ static BOOL screenIsLocked(void)
     if (_atlas) { SDL_DestroyTexture(_atlas); _atlas = nullptr; }
     if (_renderer) { SDL_DestroyRenderer(_renderer); _renderer = nullptr; }
     if (_window) { SDL_DestroyWindow(_window); _window = nullptr; }
+    _fullscreenLease.release();
+    _leasedDisplay = nil;
 }
 
 - (void)animateOneFrame
 {
     if (_permanentlyStopped) return;
+
+    // A moved view must not keep rendering under the old monitor's lease.
+    if (_leasedDisplay && ![_leasedDisplay isEqual:self.window.screen.deviceDescription[@"NSScreenNumber"]])
+    {
+        _permanentlyStopped = YES;
+        [self stopAnimation];
+        return;
+    }
 
     double now = monotonicSeconds();
     _frameCount++;
@@ -292,7 +338,7 @@ static BOOL screenIsLocked(void)
                locked, getppid(), self.isPreview);
     }
 
-    if (!_window) [self setUpIfNeeded];
+    [self setUpIfNeeded];
     if (!_field) return;
 
     // Drain SDL's queue so it can't accumulate. No input decisions are made

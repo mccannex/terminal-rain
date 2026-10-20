@@ -200,3 +200,20 @@ saturation seen in the default screensaver host on the M1 Air. Ordinary-window
 captures did not reproduce that difference. Native color regression tests check
 the tag and unchanged palette readback. See `docs/color_rendering.md` for the
 cross-platform source inspection and remaining display-management limits.
+
+## Fullscreen ownership (2026-10-19)
+
+Display-sized, non-preview views now acquire an exclusive file lease keyed by
+NSScreenNumber before graphics setup. Separate monitors keep independent leases;
+separate views in the same process also contend for the same monitor. Locks live
+in the host's NSTemporaryDirectory and release after graphics teardown or process
+termination. A rejected view stops itself, not the host and its healthy siblings.
+True previews and smaller Settings canvases bypass ownership. Ownership is checked
+again each frame so a canvas growing to fullscreen must also acquire a lease;
+a leased view moving to another display stops instead of using the old lease.
+
+Native compilation/host validation is pending: verify NSScreenNumber and view
+sizes through ViewBridge, shared temporary-directory access between hosts,
+preview/fullscreen coexistence, multiple monitors, and stop/start. POSIX lease
+tests on Linux verify the primitive, not macOS host behavior. Existing zombie
+cleanup remains necessary for an invisible host that still holds a lease.
