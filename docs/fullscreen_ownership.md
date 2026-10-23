@@ -1,21 +1,23 @@
 # Fullscreen ownership
 
 Terminal Rain refuses overlapping fullscreen rendering before creating graphics
-resources. Linux reserves the user's presentation, Windows reserves fullscreen
-`/s` mode in the login session, and macOS reserves each display-sized saver view
-by `NSScreenNumber`. macOS preview views and smaller Settings canvases remain
-independent; Windows `/p` and `/c` do not acquire fullscreen ownership.
+resources on Linux and Windows. Linux reserves the user's presentation and
+Windows reserves fullscreen `/s` mode in the login session; Windows `/p` and
+`/c` do not acquire fullscreen ownership. The initial macOS per-view lease was
+removed after real-host testing exposed a black fullscreen presentation when
+Settings' preview was open. macOS retains its existing host lifecycle cleanup.
+Historical macOS lease design/testing below describes that rejected approach.
 
 POSIX builds use nonblocking `flock` on separate file descriptors. Windows uses a
 session-local named mutex with a zero-timeout wait and accepts abandoned mutexes.
 Ownership lasts through graphics cleanup. Duplicate launches return success on
-Linux/Windows; macOS stops only the rejected view, preserving other displays in
-the same host. Lock errors fail closed. Kernel ownership disappears after process
+Linux/Windows. Lock errors fail closed. Kernel ownership disappears after process
 termination, including SIGKILL. Empty POSIX lock files intentionally persist:
 unlinking a live lock would allow a new inode and break mutual exclusion.
 
 Linux uses `XDG_RUNTIME_DIR`, falling back to a UID-qualified file in `/tmp`.
-macOS uses the host's `NSTemporaryDirectory`. Files are opened without following
+The removed macOS guard used the host's `NSTemporaryDirectory`. Files are
+opened without following
 symlinks, with close-on-exec, and checked for owner, type, link count and private
 permissions. A file error is reported rather than bypassing duplicate protection.
 A busy owner is never killed or replaced: hidden/stuck-instance cleanup remains
@@ -54,11 +56,10 @@ the Windows mutex implementation or macOS host integration.
   user to be present and ready before starting.
 - Windows: build and run lease tests; duplicate `/s` launches; preview/config
   coexistence; new launch after normal dismissal and forced termination.
-- macOS: build/sign and run lease tests; confirm ViewBridge supplies accurate
-  screen IDs and display-sized bounds; duplicate views in one and multiple host
-  processes; shared temporary-directory access between hosts; different monitors;
-  preview/fullscreen coexistence; view resizing/migration and stop/start. Confirm
-  rejecting a duplicate view does not obscure the existing host's presentation.
+- macOS: the unsafe per-view guard has been removed. Verify actual Settings
+  preview/fullscreen coexistence and dismissal after changes. Multiple physical
+  monitors and Intel hardware require separate native coverage; per-display
+  lease migration is no longer part of the macOS implementation.
 
 ## Incident investigation boundaries
 
@@ -140,3 +141,123 @@ SDL 2.30.9 display-lookup cleanup crash. Physical monitor disconnection remains
 untested by agreement because it is exceedingly rare in the user's workflow.
 Restore AC saver activation to the user's preferred 300 seconds after testing;
 AC display-off is already back at the original 1800 seconds.
+
+## macOS build and automated validation, 2026-10-22
+
+Checked branch `codex/prevent-duplicate-fullscreen` at `373b7f1` on the
+M1 MacBook Air running macOS 26.6.2 with AppleClang 21.0.0. Native arm64
+and universal (`arm64;x86_64`) Release builds passed with tests and the
+optional capture tool enabled. Both builds passed all four macOS CTest
+suites: `fullscreen_lease`, `zombie_confirmation`, `rendering`, and
+`color_macos`. Both also passed the separate rendering executable's
+`--native` checks using Metal, including readback and synthetic resets.
+
+The native graphics checks require desktop access: the sandbox-only attempt
+could not enumerate displays; rerunning with desktop access passed. Both
+bundles passed strict deep signature verification. The universal bundle
+contains both architectures and also passed verification after the release
+workflow's ditto ZIP/extraction round trip. SDL emitted existing deprecation
+and extension warnings; no project source changes were needed.
+
+These runs execute the arm64 slice. Intel hardware, actual ViewBridge host
+lease behavior, shared host temporary-directory access, duplicate-view
+visibility, preview/fullscreen coexistence, monitor migration, and real
+host stop/start remain unverified. No installed saver or system settings
+were changed during this validation. The build/test checks are ready for
+the next interactive macOS host validation step.
+
+## macOS real-host regression found, 2026-10-22
+
+The verified universal bundle was backed up/installed locally for interactive
+testing. The first launch reused the previous build's existing host despite
+SIGTERM, so that run is not evidence for the new ownership code. After the
+old host exited, PID 15905 loaded the new 3,848,800-byte universal executable
+and held `display-1.lock` in the legacyScreenSaver container temporary
+directory. The user confirmed normal fullscreen animation and dismissal;
+the host logged cleanup and disappeared after unlock.
+
+With the System Settings preview open, the host reused one view and created
+a second display-sized view in PID 16187. The second was rejected as busy
+and the user observed a black fullscreen presentation. This is a release
+blocking regression. A diagnostic build then established that the embedded
+Settings preview has `isPreview=NO`, bounds and window frame 1440x900,
+matching NSScreen.frame, in an NSServiceViewControllerWindow. Its level was
+-2147483625 and XPC_SERVICE_NAME was
+`com.apple.ScreenSaver.Engine.legacyScreenSaver`. The size-based test cannot
+distinguish this preview from a legitimate fullscreen view.
+
+A local hidden-window bundle harness passed same-process duplicate rejection,
+true-preview and smaller-canvas coexistence, stop/restart, and resize-to-fullscreen
+lease acquisition. Those checks did not model Apple's full-size ViewBridge
+preview and therefore did not predict the observed regression. A subsequent
+experimental cross-process harness check was invalid: passing a directory to
+the harness did not change NSTemporaryDirectory used by the bundle. It is
+not evidence for or against cross-host exclusion.
+
+The previous installed saver is preserved under
+`build/macos-host-validation/Terminal Rain.previous.saver`. Test logs and
+the diagnostic harness are in the same ignored build directory. The original
+five-minute saver activation setting was not changed.
+
+## Corrected macOS implementation, 2026-10-22
+
+The user approved removing the unsafe macOS per-view lease, while retaining
+Linux/Windows duplicate protection and the established macOS zombie cleanup.
+TerminalRainView.mm was restored to its pre-lease implementation.
+
+Added `views_macos`, a native hidden-window test that loads the built bundle
+and starts two display-sized `isPreview=NO` views plus a true preview. It
+executes animation frames, verifies simultaneous animation, and checks that
+stopping/restarting either non-preview view preserves the other. The test
+failed against the guarded diagnostic bundle with "fullscreen starts alongside
+display-sized Settings canvas" and passed after removing the guard.
+
+Both corrected arm64 and universal Release builds passed all five CTest
+suites and the universal build's separate native Metal rendering/reset check.
+Strict bundle signing and ditto ZIP/extraction signature verification passed.
+The release workflow builds the new test; it remains labeled native and is
+excluded from headless CI execution with the other native graphics checks.
+
+The user confirmed that the corrected installed universal build showed normal
+rain with the Settings preview open and a second fullscreen launch request,
+and dismissed normally. PID 18536 animated both display-sized views, logged
+post-unlock zombie cleanup, and exited; Settings subsequently started a new
+preview host. The recorded display-sleep prevention assertion was zero.
+This verifies coexistence and dismissal on the built-in display, not multi-monitor
+behavior or Intel execution.
+
+## Corrected macOS automatic idle and sleep/wake, 2026-10-22
+
+The user confirmed the corrected Settings/fullscreen coexistence run and
+authorized temporary idle/display-off timeouts, with restoration afterward.
+Original settings: saver activation 300 seconds, battery display-off 5 minutes,
+AC display-off 60 minutes. The first attempt changed AC display-off to 2 minutes
+but the machine was on battery, so that setting did not govern the run. Saver
+activation occurred automatically; the user dismissed before the unchanged
+five-minute battery display deadline. That attempt verifies activation/dismissal,
+not display sleep.
+
+After separate user authorization, battery display-off was shortened to 2 minutes
+and AC restored to 60 minutes. With saver activation at 60 seconds and no
+synthetic activation/input, PID 20888 started at 22:51:22 MDT with HID idle
+61.04 seconds. It animated until macOS turned the display off at 22:52:31,
+when the real host delivered stopAnimation (1,382 frames). powerd recorded
+system idle sleep at 22:52:40 and physical trackpad/keyboard wake at 22:54:16,
+with display-on at the same time. The monitoring process paused during sleep.
+The user confirmed normal rain, complete display-off, and a responsive desktop
+after physical wake/unlock, with no rain left over. This also supplies an
+observed healthy real-host stop, distinct from orphan cleanup after dismissal.
+
+Settings were restored and independently read back: saver idleTime 300, battery
+displaysleep 5, AC displaysleep 60. Other power/security settings were not
+changed. The installed corrected universal bundle's strict signature verified.
+The test host may remain resident or be reused by Settings after normal stop;
+process residency alone is not evidence of continued animation.
+
+The M1 built-in-display build, automated, coexistence, automatic activation,
+display power, sleep/wake and dismissal checks are complete. Multiple physical
+Mac displays, Intel hardware, and actual GPU resource loss remain untested.
+No macOS duplicate-prevention claim is made: that new guard was deliberately
+removed; Linux/Windows retain it. Windows/Linux retesting of the updated
+branch remains pending. Multi-monitor checks are deferred because no external
+display is available on this Mac.

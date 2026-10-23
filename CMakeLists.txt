@@ -173,6 +173,15 @@ if(APPLE)
         COMMAND codesign --force --deep --sign - $<TARGET_BUNDLE_DIR:terminal_rain_saver>
         COMMAND codesign --verify --deep --strict $<TARGET_BUNDLE_DIR:terminal_rain_saver>
         VERBATIM)
+    if(TERMINAL_RAIN_BUILD_TESTS)
+        add_executable(terminal_rain_view_tests tests/macos_view_tests.mm)
+        target_compile_options(terminal_rain_view_tests PRIVATE -fobjc-arc ${TERMINAL_RAIN_WARNINGS})
+        target_link_libraries(terminal_rain_view_tests PRIVATE "-framework Cocoa" "-framework ScreenSaver")
+        add_dependencies(terminal_rain_view_tests terminal_rain_saver)
+        add_test(NAME views_macos COMMAND terminal_rain_view_tests $<TARGET_BUNDLE_DIR:terminal_rain_saver>)
+        set_tests_properties(views_macos PROPERTIES LABELS native TIMEOUT 30)
+    endif()
+
     # POST_BUILD only runs when the module relinks. Without this, changing
     # only a thumbnail recopies it into the already-signed bundle and breaks
     # the signature ("a sealed resource is missing or invalid").

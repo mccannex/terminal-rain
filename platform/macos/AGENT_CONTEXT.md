@@ -201,19 +201,33 @@ captures did not reproduce that difference. Native color regression tests check
 the tag and unchanged palette readback. See `docs/color_rendering.md` for the
 cross-platform source inspection and remaining display-management limits.
 
-## Fullscreen ownership (2026-10-19)
+## Fullscreen ownership: macOS guard removed (2026-10-22)
 
-Display-sized, non-preview views now acquire an exclusive file lease keyed by
-NSScreenNumber before graphics setup. Separate monitors keep independent leases;
-separate views in the same process also contend for the same monitor. Locks live
-in the host's NSTemporaryDirectory and release after graphics teardown or process
-termination. A rejected view stops itself, not the host and its healthy siblings.
-True previews and smaller Settings canvases bypass ownership. Ownership is checked
-again each frame so a canvas growing to fullscreen must also acquire a lease;
-a leased view moving to another display stops instead of using the old lease.
+The Linux-origin branch introduced per-display file leases for macOS. Native
+arm64 and universal builds, lease tests, rendering tests and signatures passed,
+but interactive validation exposed a black-screen regression when launching
+fullscreen with System Settings' preview open. ViewBridge reports that preview
+as `isPreview=NO` with display-sized bounds and window frame. The second,
+legitimate view was rejected by the lease. Geometry cannot distinguish these
+roles, so the user approved removing the macOS guard. Linux/Windows retain
+their duplicate-launch protection.
 
-Native compilation/host validation is pending: verify NSScreenNumber and view
-sizes through ViewBridge, shared temporary-directory access between hosts,
-preview/fullscreen coexistence, multiple monitors, and stop/start. POSIX lease
-tests on Linux verify the primitive, not macOS host behavior. Existing zombie
-cleanup remains necessary for an invisible host that still holds a lease.
+The Mac view uses its established host lifecycle behavior and zombie cleanup.
+Do not reintroduce per-view display leases based on isPreview or dimensions.
+A future Mac duplicate guard needs a reliable presentation identity and real
+Settings-preview/fullscreen coexistence checks. See docs/fullscreen_ownership.md
+for reproduction, validation and remaining hardware limits.
+
+The corrected arm64 and universal Release builds passed all five Mac CTest
+suites (including the new actual-bundle `views_macos` coexistence/stop/restart
+regression), native Metal rendering/reset checks, and bundle/package signatures.
+The user confirmed normal real-host fullscreen animation and dismissal with
+Settings open and a second launch request. Multiple physical displays and Intel
+hardware remain untested.
+
+On the same date, actual one-minute idle activation, two-minute battery
+display-off, system idle sleep, and physical wake/unlock passed with user visual
+confirmation. The real host delivered stopAnimation when the display turned off.
+All original timeouts were restored and read back (saver 300 seconds, battery
+display 5 minutes, AC display 60 minutes). See the ownership validation notes
+for exact timing and the initial AC-versus-battery test limitation.
