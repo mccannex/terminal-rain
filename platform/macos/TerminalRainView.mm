@@ -112,7 +112,7 @@ static BOOL screenIsLocked(void)
     {
         // Matches the SDL_Delay(50) cadence runStreamLoop/
         // runMultiDisplayStreamLoop use on the other platforms.
-        self.animationTimeInterval = 1.0 / 20.0;
+        self.animationTimeInterval = streamsim::kTickMilliseconds / 1000.0;
     }
     return self;
 }

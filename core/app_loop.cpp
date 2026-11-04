@@ -9,7 +9,7 @@ namespace
 {
     // Matches the original's WM_TIMER interval. The other platforms' cadence
     // (SDL) is driven from here; macOS uses ScreenSaverView's own timer.
-    constexpr Uint32 kFrameIntervalMs = 50;
+    constexpr Uint32 kFrameIntervalMs = streamsim::kTickMilliseconds;
 
     // A thumbnail needs a miniature of the rain, including its glyphs and
     // trail lengths, rather than native-size cells on a tiny simulation.

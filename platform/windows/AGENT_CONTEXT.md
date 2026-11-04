@@ -1,5 +1,11 @@
 # Windows Agent Context
 
+## v1.1.1 handoff
+
+See `docs/release_handoff.md` for current branch status and the remaining
+Linux/macOS native checks. Windows density validation is complete; earlier
+cross-platform CI predates that density change.
+
 Maintenance reference for the Windows target. See the root README for the
 project overview and the Linux/macOS context files for their integrations.
 
@@ -23,6 +29,12 @@ binary even though SDL2 is linked statically.
 
 Right-click the `.scr` and choose **Install**. Windows derives the picker
 name from the filename.
+
+For argument-specific process tests, bypass the `.scr` shell association with
+`ProcessStartInfo.UseShellExecute = false`; that association forces `/S`.
+Use normal window visibility for a fullscreen visual test. Hidden startup can
+hide the first display's window while the other three remain visible. See
+`docs/release_handoff.md` for the observed diagnostic pitfall.
 
 ## Screensaver integration
 
@@ -52,11 +64,8 @@ sizes from making a tiny preview mostly empty; fullscreen rendering is unchanged
 Preview cleanup/trail distances also scale with the canvas's glyph-row count:
 otherwise streams linger up to 200 rows below a roughly 19-row preview, filling
 its stream cap and producing long dark periods before replacements can spawn.
-At 320x234, a deterministic diagnostic checked ten simulated minutes per seed
-after the 600-tick warm-up (seeds 1, 7, 12345). Original trail distances produced
-zero visible heads at times and runs of fewer than four heads lasting 4-4.45
-seconds. Compact preview trails kept at least 32, 39, and 35 heads visible,
-respectively. The full Windows Release build and both rendering suites passed.
+The user approved the tuned thumbnail. Historical measurements and rendering
+checks are in `docs/optimization_validation.md`.
 
 ## Dismissal and testing
 
@@ -70,25 +79,20 @@ coverage and first-click dismissal on each monitor, then test keyboard,
 scrolling and movement in separate runs. Recheck real idle activation when
 changing integration code.
 
-The 2026-10-06 optimization pass fixed preview texture/renderer destruction
-order, enabled SDL's allow-screensaver hint in both Windows modes, and added
-failure/reset handling to the shared core. A reset ends the saver cleanly.
-Off-screen glyphs and erase cells are culled individually with RNG consumption
-preserved. Windows 10/MinGW Release tests passed using software and Direct3D 11
-rendering, including repeated hidden preview loops, injected creation/binding
-failures, reset notification across fields, and no thread display-required
-request. The user approved the actual Settings preview. On the later Windows 10
-follow-up, the real fullscreen `.scr` passed a physical display-off test with a
-temporary 60-second AC timeout: every display powered off, and mouse movement
-woke them and dismissed the saver to the desktops. The saver exited with code 0;
-the helper restored the original AC timeout of Never. Physical keyboard, scroll,
-and first-click dismissal across monitors and actual GPU device loss still need
-separate checks. See `docs/optimization_validation.md` for results and reproduction.
+Current Windows release validation is complete for the density change: all four
+MinGW Release suites passed (including native Direct3D 11), and the user approved
+density, four-display coverage, and normal dismissal. The pre-density MSVC CI
+artifact also passed real preview, duplicate exclusion, and automatic idle /
+display-off / physical wake checks. Timeouts were restored and read back as
+300 seconds for saver activation and 3,600 seconds for AC display-off.
 
-Automatic idle activation was then verified with a temporary 30-second saver
-timeout and 60-second display timeout. Windows launched the saver automatically;
-all displays turned off and mouse input woke/dismissed normally. The helper
-restored the original five-minute saver timeout and Never AC display timeout.
+The approved density build is installed locally under `build-installed-windows`,
+with its three MinGW runtime DLLs. It loads without the compiler PATH. Keep
+those DLLs beside the `.scr`; the public release still comes from MSVC CI.
+Details: `docs/stream_density.md`, `docs/fullscreen_ownership.md`.
+
+Actual GPU resource loss and individually enumerated keyboard/scroll/first-click
+dismissal on every monitor remain coverage limits, not newly observed defects.
 
 For a short interactive display-off check on AC power:
 
@@ -120,5 +124,9 @@ Only /s takes a nonblocking session-local named mutex, before SDL initialization
 A second fullscreen launch returns success without opening windows; configure
 and preview modes bypass the mutex. Normal exit releases it; abandoned ownership
 is accepted after a crash. The session-wide scope covers the saver and ordinary
-desktop within the same login. Native Windows compilation and preview/fullscreen
-coexistence must be verified on Windows; Linux tests cannot establish those.
+desktop within the same login. On 2026-11-04, a fresh Windows 10/MinGW Release
+build passed all four suites, including native rendering and cross-process
+lease checks. MSVC release CI also passed. Desktop duplicate rejection and
+normal dismissal were checked; the user confirmed the real settings thumbnail.
+Preview/fullscreen processes coexisted while duplicates exited successfully.
+See `docs/fullscreen_ownership.md` for evidence and remaining coverage limits.

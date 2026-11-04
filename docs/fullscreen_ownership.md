@@ -48,18 +48,17 @@ included in all three release build jobs. Native Windows and macOS compilation
 and execution were unavailable on Fedora; passing POSIX tests does not validate
 the Windows mutex implementation or macOS host integration.
 
-## Remaining native checks
+## Current validation status
 
-- Linux: observed fullscreen coverage and dismissal with the guarded executable;
-  second launch while first is visible, then relaunch after dismissal; repeated
-  actual KDE idle activation and display sleep/wake. Visual tests require the
-  user to be present and ready before starting.
-- Windows: build and run lease tests; duplicate `/s` launches; preview/config
-  coexistence; new launch after normal dismissal and forced termination.
-- macOS: the unsafe per-view guard has been removed. Verify actual Settings
-  preview/fullscreen coexistence and dismissal after changes. Multiple physical
-  monitors and Intel hardware require separate native coverage; per-display
-  lease migration is no longer part of the macOS implementation.
+The October Linux and corrected macOS native checks below are complete within
+their recorded limits. Windows ownership, preview, desktop dismissal, and real
+automatic idle/display-off/wake checks were completed on 2026-11-04. Those
+ownership results predate the density change; Windows subsequently passed its
+build/tests and visual density validation as recorded in `docs/stream_density.md`.
+
+For current v1.1.1 Linux/macOS density work and final CI, use
+`docs/release_handoff.md`. Intel Mac hardware, multiple Mac displays, real X11,
+and actual GPU loss remain untested; none is claimed by the existing results.
 
 ## Incident investigation boundaries
 
@@ -258,6 +257,60 @@ The M1 built-in-display build, automated, coexistence, automatic activation,
 display power, sleep/wake and dismissal checks are complete. Multiple physical
 Mac displays, Intel hardware, and actual GPU resource loss remain untested.
 No macOS duplicate-prevention claim is made: that new guard was deliberately
-removed; Linux/Windows retain it. Windows/Linux retesting of the updated
-branch remains pending. Multi-monitor checks are deferred because no external
-display is available on this Mac.
+removed; Linux/Windows retain it. Subsequent Windows validation is recorded
+below. Native Linux/macOS checks of the newer density scheduler are tracked in
+`docs/release_handoff.md`. Mac multi-monitor checks remain deferred because no
+external display is available on this Mac.
+
+## Windows release validation, 2026-11-04
+
+Validated branch commit `2045168` on Windows 10 (10.0.19045), using
+MSYS2 UCRT64 GCC 13.2.0 and the pinned SDL 2.30.9. A fresh separate Release
+build, including a rebuild of SDL, passed all four suites: `fullscreen_lease`,
+`zombie_confirmation`, `rendering`, and `rendering_windows`. The existing
+MinGW build was also reconfigured for the branch and passed all four suites.
+The local v1.1.1 metadata preparation changes no Windows runtime code.
+
+Additional entry-point checks held `Local\TerminalRain.Fullscreen.session`
+while invoking `/s`, `/S`, and `-s` with an intentionally unavailable SDL
+video driver. Each returned zero before video initialization. After releasing
+the mutex, `/s` reached initialization and returned one for the invalid driver.
+Invalid-parent preview and legacy password modes returned zero while the mutex
+was held. A separate abrupt-termination check retained a handle to the named
+mutex while killing its owner; the lease accepted the abandoned mutex.
+
+The real desktop launch created four fullscreen windows. A duplicate returned
+zero while the owner remained alive; the user confirmed the saver ran and
+dismissed normally, and the original process returned zero. Earlier sandbox
+launches were on an isolated desktop and are not visual-validation evidence.
+
+The manual workflow run at
+https://github.com/mccannex/terminal-rain/actions/runs/41930548026 passed all
+three platform jobs at `2045168`; the release-publication job was skipped.
+Windows MSVC passed the three non-native suites. macOS also verified the bundle
+and its packaged signature. This CI run precedes the local version/notes edits.
+
+The Windows CI `.scr` was downloaded and installed with user approval. The old
+configured screensaver path was stale; the replacement points to the existing
+CI artifact. The user confirmed the animated Windows settings thumbnail. With
+that `/p` process running, a fullscreen launch created four windows, a duplicate
+exited zero, and both fullscreen and preview processes remained alive. That
+coexistence run reached its safety cutoff rather than a confirmed physical
+dismissal, so it establishes process coexistence, not a second visual pass.
+
+The installed MSVC artifact then passed an actual automatic-idle check. The
+helper observed fullscreen PID 2136 after temporarily setting the saver delay
+to 30 seconds and AC display-off to 60 seconds. The user reported normal
+display-off/wake/dismissal. At the 150-second test limit, the helper restored
+the original 300-second saver delay and 3,600-second AC display timeout.
+Independent registry and `powercfg` readback confirmed restoration; the DC
+display timeout remained 300 seconds, the installed file existed, and no test
+saver process remained.
+The user requested that the new saver remain installed. This successful
+automatic launch also followed forced termination of the prior coexistence
+run, without a stale fullscreen lock.
+
+No actual GPU resource loss was induced. Physical keyboard, scrolling and
+first-click dismissal on each monitor were not separately enumerated in this
+session. The documented Linux SDL display-lookup cleanup crash remains outside
+the duplicate-protection fix.

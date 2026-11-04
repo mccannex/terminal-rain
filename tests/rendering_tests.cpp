@@ -102,6 +102,28 @@ extern "C"
 
 int main(int argc, char* argv[])
 {
+    // Equal arrivals per glyph column across sizes, including fractional rates
+    // and enlarged glyphs (whose column count, not raw pixels, is relevant).
+    struct SpawnCase { int columns, total, maximum; };
+    for (auto sample : {SpawnCase{1, 20, 1}, SpawnCase{40, 800, 1},
+                        SpawnCase{160, 3200, 1}, SpawnCase{240, 4800, 2},
+                        SpawnCase{480, 9600, 3}, SpawnCase{137, 2740, 1}})
+    {
+        streamsim::StreamSpawnRate rate(sample.columns);
+        int total = 0;
+        for (int tick = 1; tick <= 3200; ++tick)
+        {
+            const int count = rate.next();
+            total += count;
+            require(count >= 0 && count <= sample.maximum,
+                    "spawn rate distributes arrivals without bursts");
+        }
+        require(total == sample.total, "spawn rate preserves fractional arrivals over time");
+    }
+    streamsim::StreamSpawnRate fractional(240);
+    for (int count : {1, 2, 1, 2, 1, 2})
+        require(fractional.next() == count, "1080p arrivals alternate evenly");
+
     const bool native = argc == 2 && SDL_strcmp(argv[1], "--native") == 0;
     SDL_SetMainReady();
     if (!native) SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
@@ -200,7 +222,12 @@ int main(int argc, char* argv[])
         SoftwareContext first, second;
         StreamField field(first.renderer, second.atlas, 256, 192);
         require(field.valid(), "setup before draw failure");
-        require(!field.tick() && !field.valid(), "draw failure stops field");
+        // Small surfaces accumulate fractional arrivals; wait for the first
+        // actual glyph draw rather than assuming every tick spawns a stream.
+        bool stopped = false;
+        for (int tick = 0; tick < streamsim::kBaselineColumns && !stopped; ++tick)
+            stopped = !field.tick();
+        require(stopped && !field.valid(), "draw failure stops field");
         require(SDL_GetRenderTarget(first.renderer) == nullptr, "draw failure restores target");
     }
 

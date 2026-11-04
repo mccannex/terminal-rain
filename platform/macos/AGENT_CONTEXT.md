@@ -1,5 +1,11 @@
 # macOS Agent Context
 
+## v1.1.1 handoff
+
+See `docs/release_handoff.md` for current branch status and the remaining
+Linux/macOS native checks. Windows density validation is complete; earlier
+cross-platform CI predates that density change.
+
 For any coding agent working on this repo's macOS target. Tracked in git so it
 travels between machines and sessions; update it with real status before you're
 done. The app is essentially finished, so this file is a reference for
@@ -153,43 +159,20 @@ confirmed live:
   while the real saver runs, any input dismisses that too, so killing a
   shared host process loses nothing.
 
-## Status
+## Native validation baseline
 
-**Done and verified on the development Mac**: appears in the picker with
-its thumbnail, animates correctly in the Settings preview and on a real idle
-trigger with correct Retina sizing, exits on input, doesn't block its own idle
-trigger, and self-terminates its host process ~2s after dismissal
-instead of animating invisibly forever. Releases ship via CI
-(`.github/workflows/release.yml`) with the curl install flow.
+The corrected universal and arm64 builds passed all five Mac CTest suites,
+native Metal rendering/reset checks, and bundle/package signatures on
+2026-10-22. Real Settings/fullscreen coexistence, physical dismissal, automatic
+idle activation, display-off, healthy host stopAnimation, system idle sleep and
+wake/unlock passed on the M1 built-in display. See `docs/fullscreen_ownership.md`.
+These checks predate the new density scheduler and v1.1.1 metadata; follow
+`docs/release_handoff.md` to validate the current branch on this Mac.
 
-Open, non-blocking:
-
-- The 2026-10-06 Windows/shared-core pass added checked field initialization,
-  per-field SDL reset watches, clean stop on rendering failure, and off-screen
-  culling. This view now observes the field's failure result and stops its
-  timer/resources instead of retrying failed rendering at 20 Hz. The changes
-  have now been built on macOS; the unverified rendering-failure and actual
-  GPU-loss shutdown paths remain. CI/local build instructions now select Release
-  explicitly; CI also runs portable rendering checks. The arm64
-  bundle/signature, single-display fullscreen host runs, and synthetic Metal
-  rendering checks passed on this Mac. Issue #9 now latches qualifying input with monotonic timing. Locked frames
-  cancel pending confirmation; the first unlocked observation of post-grace
-  input starts a fresh two-second window, including when the lock flag clears
-  late after a single input. Start/stop reset the state. Grace-only dismissal
-  remains indistinguishable from hot-corner input and is intentionally ignored.
-  The Release arm64 bundle and portable rendering/timing tests were built and
-  passed on this Mac on 2026-10-06; its ad-hoc signature verified. The native
-  hidden-window Metal rendering/readback and synthetic-reset test also passed. Two real fullscreen host runs also passed: locked animation, physical dismissal
-  and post-unlock process death, with single input and with continuous activity
-  (HID idle 0.01s at termination). The rebuilt saver remains installed. Remaining
-  native host gaps are preview-host lifecycle/cleanup beyond the observed
-  fullscreen runs, multi-display behavior, naturally delivered healthy
-  stop/start, artificially delayed lock-state clearing, and actual GPU-loss
-  shutdown; Intel hardware is separately untested. See
-  docs/optimization_validation.md for observed process timing and limits.
-
-- The universal build's Intel slice is untested on real hardware.
-- Optional future config sheet (none planned; the defaults are tuned).
+Multiple physical Mac displays, Intel execution, actual GPU resource loss, and
+Mac view failure injection remain untested. Grace-only dismissal is deliberately
+ignored because the available input signal cannot distinguish it from hot-corner
+activation. Do not infer continued animation from a resident host process alone.
 
 ## Color baseline
 

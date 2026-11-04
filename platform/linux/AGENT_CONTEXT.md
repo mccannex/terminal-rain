@@ -1,5 +1,11 @@
 # Linux Agent Context
 
+## v1.1.1 handoff
+
+See `docs/release_handoff.md` for current branch status and the remaining
+Linux/macOS native checks. Windows density validation is complete; earlier
+cross-platform CI predates that density change.
+
 For any coding agent working on this repo from the Fedora/KDE Plasma
 machine. Tracked in git so it travels between machines and sessions; update
 it with real status before you're done. The app is essentially finished, so
@@ -77,41 +83,19 @@ Wayland layout:
 - One window per display with a single unified exit-on-input across all of
   them, from `runMultiDisplayStreamLoop`.
 
-## Status
+## Native validation baseline
 
-**Done and live-tested on the real machine** (not WSL): installs through
-the powerdevil KCM, activates on its real idle timer, animates correctly
-across all four displays with consistent glyph size, exits cleanly on mouse
-movement, key presses, mouse clicks, and scrolling. The local checkout was
-resynced after the 2026-10-05 history rewrite, rebuilt under the new
-`terminal-rain` binary name, and the powerdevil wrapper now points at it.
+The guarded build passed Fedora Release tests and real four-display Wayland
+coverage, duplicate rejection, dismissal/relaunch, repeated KDE idle activation,
+display-off/wake, and one system suspend/resume cycle on 2026-10-19. See
+`docs/fullscreen_ownership.md` for evidence and incident boundaries. Those checks
+predate the new shared density scheduler; revalidate it on this machine using
+`docs/release_handoff.md`.
 
-Open, non-blocking:
-
-- The 2026-10-06 Windows/shared-core pass enabled the allow-screensaver hint
-  here and added clean shutdown on drawing failure or renderer reset, plus
-  off-screen culling. Linux CI now selects Release explicitly and runs the
-  portable rendering checks. On 2026-10-06, the updated Release build and both
-  opt-in regression tests passed on this Fedora machine. The real KDE launcher
-  stayed active across the four-output Wayland layout (three 100% displays and
-  the 125% laptop panel) and remained running through a forced five-second
-  DPMS off/on cycle before being stopped manually. A person-observed follow-up
-  confirmed correct four-display coverage and mixed-DPI rendering, plus clean
-  dismissal by keyboard, deliberate mouse movement, click, scroll, and the
-  first click on a non-primary monitor. With KDE's AC display-off timeout
-  temporarily shortened from 30 minutes to one minute, all displays powered
-  off while the saver was running; deliberate mouse movement woke the displays,
-  dismissed the saver, and returned to a healthy desktop. Automatic and repeat
-  idle activation were not directly re-observed; those KDE-managed launch paths
-  were accepted based on the successful configured launcher checks. The older
-  live verification above predates these changes.
-
-- The X11 fallback has never run on a real X11 session.
-- No packaging (no .rpm/.deb or install script); the powerdevil script
-  points at the built `terminal-rain` binary directly.
-- Idea only, not started: a user-configurable "master scale" multiplier on
-  top of the per-monitor auto-scaling (the laptop panel's normalized size
-  runs slightly larger than preferred).
+Remaining limitations: X11 has not been tested in a real session; the earlier
+SDL display-lookup cleanup crash was not reproduced or fixed by duplicate
+protection. There is no RPM/DEB packaging; the powerdevil wrapper launches the
+built executable.
 
 ## Fullscreen ownership (2026-10-19)
 

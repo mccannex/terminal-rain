@@ -46,6 +46,9 @@ machines. I like it a lot. Maybe you'll like it too.
 
 - **20 fps by design.** Matches the original animation rate and avoids rendering unnecessary
   frames. The Windows/Linux loop accounts for time spent drawing when scheduling the next frame.
+- **Consistent stream density.** New streams arrive in proportion to each surface's glyph-column
+  count, using 20 streams per second across 160 columns as the baseline. Fractional arrivals
+  accumulate across frames; the Windows settings thumbnail retains its tuned spawn rate.
 - **Draw only what changes.** The screensaver maintains its image in a persistent texture,
   avoiding a full clear and redraw of its contents each frame.
 - **Skip invisible work.** Off-screen glyphs and erase cells are discarded before batching

@@ -17,9 +17,8 @@ namespace
     }
 
     // Scale the stream count by how a surface's pixel area compares to the
-    // 1920x1080 reference, so density stays visually consistent across
-    // differently-sized displays (issue #1), floored so a small preview still
-    // shows rain.
+    // 1920x1080 reference. This is a safety cap; the column-scaled spawn rate
+    // controls density. Floor it so a small preview still shows rain.
     int scaledStreamCount(int surfaceWidth, int surfaceHeight)
     {
         const double area = static_cast<double>(surfaceWidth) * surfaceHeight;
@@ -44,6 +43,7 @@ StreamField::StreamField(SDL_Renderer* renderer, SDL_Texture* glyphAtlas,
     , spacePad_(compactTrails ? std::min(kSpacePad, std::max(1, backTrace_ / 6)) : kSpacePad)
     , despawnRow_(surfaceHeight / glyphH_ + backTrace_)
     , maxStreams_(scaledStreamCount(surfaceWidth, surfaceHeight))
+    , spawnRate_(compactTrails ? kBaselineColumns : cols_)
     , rng_(makeSeed())
     , streams_(maxStreams_)
 {
@@ -95,7 +95,9 @@ int SDLCALL StreamField::watchRendererReset(void* userdata, SDL_Event* event)
 
 void StreamField::spawnDespawn()
 {
-    if (activeCount_ < maxStreams_)
+    // Discard arrivals blocked by capacity instead of banking a later burst.
+    int arrivals = std::min(spawnRate_.next(), maxStreams_ - activeCount_);
+    if (arrivals > 0)
     {
         for (auto& s : streams_)
         {
@@ -107,7 +109,7 @@ void StreamField::spawnDespawn()
                 s.col = rng_.below(cols_);
                 s.advanceDelay = rng_.below(kSpeedDelay + 1);
                 s.ticksUntilAdvance = s.advanceDelay;
-                break;
+                if (--arrivals == 0) break;
             }
         }
     }

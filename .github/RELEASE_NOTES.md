@@ -1,12 +1,9 @@
-## What's new in v1.1.0
+## What's new in v1.1.1
 
-- **Terminal Rain replaces Glyph Rain.** Updated names, documentation, and an animated preview using the new palette.
-- **Less rendering work.** Invisible glyphs and erase cells are skipped before batching and sorting, with visible trails and animation timing preserved. Release builds explicitly enable compiler optimizations on every platform.
-- **Display sleep works normally.** Windows and Linux allow the configured display-off timeout while the screensaver runs.
-- **More reliable cleanup.** Fixed Windows preview resource teardown and added clean shutdown on rendering failures and renderer-reset notifications. macOS background cleanup completes even during continuous input.
-- **Better previews and display support.** Improved Windows settings-preview density, display-area scaling, and universal macOS builds for Apple Silicon and Intel. Intel hardware remains untested.
-- **Refined colors.** A tuned shared palette with explicit sRGB tagging for macOS Metal output and the animated preview.
-- **Expanded regression coverage.** Automated rendering and cleanup checks, supplemented by native Windows, Linux Wayland, and Apple Silicon verification. Actual GPU resource loss and Linux X11 remain untested.
+- **Prevent duplicate fullscreen launches on Windows and Linux.** A second launch exits without opening another set of windows. Ownership releases after normal exit or a crash.
+- **More consistent rain density.** Stream arrivals scale with each display's glyph-column count, preserving the denser 720p look on larger surfaces. Glyph sizes, speeds, and trail lengths are unchanged.
+- **Preserve macOS Settings/fullscreen coexistence.** macOS retains its established host lifecycle and background cleanup; duplicate protection is limited to Windows and Linux.
+- **Expanded regression coverage.** New process-ownership tests and a macOS bundle test cover simultaneous Settings/fullscreen views and stop/restart behavior.
 
 ## Installing
 

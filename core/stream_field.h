@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include "rng.h"
+#include "stream_spawn.h"
 
 // Fixed simulation tunables, ported from the original matrix.cpp globals of
 // the same names. These were briefly matrix.cfg keys, but the screensaver
@@ -37,10 +38,9 @@ namespace streamsim
     static_assert(sizeof(kTrailColors) / sizeof(kTrailColors[0]) == kSpeedDelay + 1);
 
     // Density reference: kMaxStreams is the count intended for a 1920x1080
-    // surface. StreamField scales it by a display's pixel area so density
-    // stays visually consistent -- a smaller screen isn't overcrowded and a
-    // larger one isn't sparse (issue #1). kMinStreams keeps a tiny preview
-    // window from ending up nearly empty.
+    // surface. StreamField scales this safety cap by pixel area. Actual
+    // arrival density is controlled by StreamSpawnRate, not this capacity.
+    // kMinStreams keeps a tiny preview from ending up nearly empty.
     constexpr int   kReferenceWidth  = 1920;
     constexpr int   kReferenceHeight = 1080;
     constexpr int   kMinStreams      = 24;
@@ -124,6 +124,7 @@ private:
     int spacePad_;
     int despawnRow_;   // headRow past which a stream is recycled
     int maxStreams_;   // active stream cap for this surface
+    streamsim::StreamSpawnRate spawnRate_;
     Rng rng_;
     std::vector<Stream> streams_;
     int activeCount_ = 0;
