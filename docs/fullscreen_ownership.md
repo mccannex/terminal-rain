@@ -24,7 +24,7 @@ The Linux entry-point suite uses Python 3 when available. The C++ lease suite is
 
 The October Linux and corrected macOS native checks below are complete within their recorded limits. Windows ownership, preview, desktop dismissal, and real automatic idle/display-off/wake checks were completed on 2026-11-04. Those ownership results predate the density change; Windows subsequently passed its build/tests and visual density validation as recorded in `docs/stream_density.md`.
 
-Current-source Mac density/coexistence checks and cross-platform CI passed on 2026-11-05. Linux native Wayland/OpenGL checks, user-approved four-display density, panel coverage, dismissal and visible duplicate rejection also passed that day. The October Linux power-cycle results were carried forward after reviewing the unchanged integration/input/cleanup paths; they were not repeated. See `docs/release_handoff.md` for the exact evidence and release status. Intel Mac hardware, multiple Mac displays, real X11 and actual GPU loss remain untested; none is claimed by the existing results.
+Current-source Mac density/coexistence checks and cross-platform CI passed on 2026-11-05. Linux native Wayland/OpenGL checks, user-approved four-display density, panel coverage, dismissal and visible duplicate rejection also passed that day. The October Linux power-cycle results were carried forward after reviewing the unchanged integration/input/cleanup paths; they were not repeated. See `docs/releases/v1.1.1-validation.md` for the exact evidence and release status. Intel Mac hardware, multiple Mac displays, real X11 and actual GPU loss remain untested; none is claimed by the existing results.
 
 ## Incident investigation boundaries
 
@@ -78,7 +78,7 @@ After separate user authorization, battery display-off was shortened to 2 minute
 
 Settings were restored and independently read back: saver idleTime 300, battery displaysleep 5, AC displaysleep 60. Other power/security settings were not changed. The installed corrected universal bundle's strict signature verified. The test host may remain resident or be reused by Settings after normal stop; process residency alone is not evidence of continued animation.
 
-The M1 built-in-display build, automated, coexistence, automatic activation, display power, sleep/wake and dismissal checks are complete. Multiple physical Mac displays, Intel hardware, and actual GPU resource loss remain untested. No macOS duplicate-prevention claim is made: that new guard was deliberately removed; Linux/Windows retain it. Subsequent Windows validation is recorded below. Current-source Mac density checks subsequently passed on 2026-11-05; Linux density validation is next in `docs/release_handoff.md`. Mac multi-monitor checks remain deferred because no external display is available on this Mac.
+The M1 built-in-display build, automated, coexistence, automatic activation, display power, sleep/wake and dismissal checks are complete. Multiple physical Mac displays, Intel hardware, and actual GPU resource loss remain untested. No macOS duplicate-prevention claim is made: that new guard was deliberately removed; Linux/Windows retain it. Subsequent Windows validation is recorded below. Current-source Mac density checks subsequently passed on 2026-11-05; Linux density validation also passed on 2026-11-05; see `docs/releases/v1.1.1-validation.md`. Mac multi-monitor checks remain deferred because no external display is available on this Mac.
 
 ## Windows release validation, 2026-11-04
 

@@ -2,7 +2,7 @@
 
 Implementation/validation performed on Windows 10 (10.0.19045), 2026-10-06. Baseline: `3b00f06def7c740c1caaeec8490c5dcd9873597e` (reviewed for issue #4).
 
-Historical evidence from October 6 follows; references to pending work describe that session, not the current release checklist. Later native idle/display-power, Mac preview/healthy-stop and cross-platform checks supersede those gaps in `docs/fullscreen_ownership.md`. For current v1.1.1 status and Linux continuation, read `docs/release_handoff.md`. Actual GPU loss and the hardware limitations listed there remain untested.
+Historical evidence from October 6 follows; references to pending work describe that session, not the current release checklist. Later native idle/display-power, Mac preview/healthy-stop and cross-platform checks supersede those gaps in `docs/fullscreen_ownership.md`. For the v1.1.1 validation record, read `docs/releases/v1.1.1-validation.md`. Actual GPU loss and the hardware limitations listed there remain untested.
 
 ## Changes and remaining platform work
 

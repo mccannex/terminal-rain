@@ -1,14 +1,14 @@
 # Windows Agent Context
 
-## v1.1.1 handoff
+## v1.1.1 validation
 
-Read `docs/release_handoff.md` first for the current source, completed Windows/Mac validation, green cross-platform CI and the Linux continuation checklist. Linux native density/integration validation is the next release step.
+Windows, Mac and Linux density validation is complete within the recorded hardware limits. See `docs/releases/v1.1.1-validation.md` for source/build evidence, native observations and power-management checks carried forward after runtime review. The release remains an unpublished draft pending final installer review and publishing approval.
 
 Maintenance reference for the Windows target. See the root README for the project overview and the Linux/macOS context files for their integrations.
 
 ## Build and install
 
-Entry point: `platform/windows/main.cpp`; CMake target: `terminal_rain`. CMake copies `terminal_rain.exe` to `Terminal Rain.scr`. SDL2 is fetched and linked statically, and the font atlas is embedded.
+Entry point: `platform/windows/main.cpp`; CMake target: `terminal_rain`. CMake copies `terminal_rain.exe` to `Terminal Rain.scr`. SDL2 is fetched and linked statically, and the font atlas is embedded. The MSVC release uses the dynamic Microsoft C/C++ runtime and requires the [Microsoft Visual C++ v14 Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/); statically linking SDL2 does not remove that requirement.
 
 With Visual Studio C++ Build Tools, from the repository root:
 

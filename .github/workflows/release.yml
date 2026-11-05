@@ -123,6 +123,11 @@ jobs:
           ditto -x -k "Terminal Rain-macOS.zip" "$extracted"
           codesign --verify --deep --strict --verbose=2 "$extracted/Terminal Rain.saver"
 
+      - name: Installer transaction and native bundle checks
+        run: |
+          python3 tests/macos_installer_tests.py -v
+          python3 tests/macos_installer_native_tests.py "Terminal Rain-macOS.zip"
+
       - uses: actions/upload-artifact@v4
         with:
           name: Terminal Rain-macos

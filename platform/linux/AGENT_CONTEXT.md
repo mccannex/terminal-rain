@@ -1,16 +1,16 @@
 # Linux Agent Context
 
-## v1.1.1 handoff
+## v1.1.1 validation
 
-Read `docs/release_handoff.md` first for the current source, completed Windows/Mac validation, green cross-platform CI and the Linux continuation checklist and final Linux results. Native density validation is complete; prior power-management results were carried forward after reviewing the runtime diff. The branch is merged to main; tag v1.1.1 at `53b990c` passed all release workflow jobs, and its draft assets were verified. Publishing awaits final user approval. The local idle wrapper still uses the user-approved build below.
+Windows, Mac and Linux density validation is complete within the recorded hardware limits. See `docs/releases/v1.1.1-validation.md` for source/build evidence, native observations and power-management checks carried forward after runtime review. The release remains an unpublished draft pending final installer review and publishing approval.
 
-On 2026-11-05, checkout `d3be66d` (runtime `d5ad85d`) was rebuilt as Release in `build/linux` with tests enabled; all four expected suites passed. The idle wrapper points at this build. Saved AC delays remain 300 seconds for the script and 1,800 seconds for display-off; no settings were changed. Native Wayland/OpenGL rendering checks passed, and the user approved density, glyph sharpness, four-display/panel coverage and mouse dismissal. A visible duplicate exited zero without disrupting the owner; the owner then exited zero with no process left. KDE reports AC active. Actual idle/display-off/wake and suspend tests from October were carried forward after review: those paths and the 50-ms cadence are unchanged; only bounded stream arrivals changed. They were not repeated today. See the handoff for exact build, process evidence and remaining limits.
+On 2026-11-05, checkout `d3be66d` (runtime `d5ad85d`) was rebuilt as Release in `build/linux` with tests enabled; all four expected suites passed. The idle wrapper points at this build. Saved AC delays remain 300 seconds for the script and 1,800 seconds for display-off; no settings were changed. Native Wayland/OpenGL rendering checks passed, and the user approved density, glyph sharpness, four-display/panel coverage and mouse dismissal. A visible duplicate exited zero without disrupting the owner; the owner then exited zero with no process left. KDE reports AC active. Actual idle/display-off/wake and suspend tests from October were carried forward after review: those paths and the 50-ms cadence are unchanged; only bounded stream arrivals changed. They were not repeated today. See the validation record for exact build, process evidence and remaining limits.
 
 For any coding agent working on this repo from the Fedora/KDE Plasma machine. Tracked in git so it travels between machines and sessions; update it with real status before you're done. The app is essentially finished, so this file is a reference for maintenance work, not a running build log.
 
 ## Project, in brief
 
-**Terminal Rain**: a cross-platform rewrite of a classic Win32/GDI "Matrix digital rain" screensaver (originally by Louai Munajim, CC BY 3.0) on top of SDL2, with a platform-agnostic simulation core (`core/`) shared across all targets. SDL2 is vendored via CMake `FetchContent` (pinned `release-2.30.9`) and statically linked, so binaries are self-contained. See the root `README.md` for credits and `platform/macos/AGENT_CONTEXT.md` for the macOS integration.
+**Terminal Rain**: a cross-platform rewrite of a classic Win32/GDI "Matrix digital rain" screensaver (originally by Louai Munajim, CC BY 3.0) on top of SDL2, with a platform-agnostic simulation core (`core/`) shared across all targets. SDL2 is vendored via CMake `FetchContent` (pinned `release-2.30.9`) and statically linked; system C/C++ runtime libraries are still required. See the root `README.md` for credits and `platform/macos/AGENT_CONTEXT.md` for the macOS integration.
 
 The Linux target is `platform/linux/main.cpp`, CMake target `terminal_rain` (only defined on non-Apple Unix), output binary `terminal-rain`. CI builds it on Ubuntu and attaches it to each release as the `Terminal Rain-linux` artifact.
 
@@ -46,7 +46,7 @@ Verified live on this machine's real 4-monitor mixed-DPI (100% to 206%) Wayland 
 
 ## Native validation baseline
 
-The guarded build passed Fedora Release tests and real four-display Wayland coverage, duplicate rejection, dismissal/relaunch, repeated KDE idle activation, display-off/wake, and one system suspend/resume cycle on 2026-10-19. See `docs/fullscreen_ownership.md` for evidence and incident boundaries. Those checks predate the new shared density scheduler; revalidate it on this machine using `docs/release_handoff.md`.
+The guarded build passed Fedora Release tests and real four-display Wayland coverage, duplicate rejection, dismissal/relaunch, repeated KDE idle activation, display-off/wake, and one system suspend/resume cycle on 2026-10-19. See `docs/fullscreen_ownership.md` for evidence and incident boundaries. The new density scheduler also passed native rendering and user-approved four-display checks on 2026-11-05; see `docs/releases/v1.1.1-validation.md`.
 
 Remaining limitations: X11 has not been tested in a real session; the earlier SDL display-lookup cleanup crash was not reproduced or fixed by duplicate protection. There is no RPM/DEB packaging; the powerdevil wrapper launches the built executable.
 

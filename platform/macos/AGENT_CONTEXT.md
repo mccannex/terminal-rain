@@ -1,8 +1,8 @@
 # macOS Agent Context
 
-## v1.1.1 handoff
+## v1.1.1 validation
 
-Read `docs/release_handoff.md` first for the current source, completed Windows/Mac validation, green cross-platform CI and the Linux continuation checklist. Linux native density/integration validation is the next release step.
+Windows, Mac and Linux density validation is complete within the recorded hardware limits. See `docs/releases/v1.1.1-validation.md` for source/build evidence, native observations and power-management checks carried forward after runtime review. The release remains an unpublished draft pending final installer review and publishing approval.
 
 On 2026-11-05, source `d5ad85d` passed Release arm64/universal builds, all five CTest suites for each build, separate native Metal rendering/reset tests, and bundle signatures plus the universal ZIP/extraction signature round trip on macOS 26.6.2. Native graphics tests need desktop access outside the execution sandbox. The CI bundle is installed; the user approved real-host density, sharp glyphs, built-in display coverage and physical dismissal on 2026-11-05. Logs confirmed 20 fps and input-confirmed host termination at 11:29:57 MDT; a direct process check found no remaining saver/engine. Real Settings-preview/fullscreen coexistence also passed with user confirmation: both views animated in the same host, physical dismissal exited the engine, the shared host terminated at 11:33:58 MDT, and Settings restarted its preview normally. Continued-input preview restarts remain the accepted lifecycle. Intel execution is untested; automatic idle/display-off/sleep was not repeated for the density change. Fresh cross-platform CI run `42083438520` passed Windows, Linux and macOS jobs for the same source. Its downloaded universal Mac bundle also passed signature, version/deployment checks and the native bundle view lifecycle test on this Mac.
 
@@ -54,7 +54,7 @@ Measured on the development Mac (one 1440x900 display): 2.5 to 5% of one CPU cor
 
 ## Distribution: no notarization (decided)
 
-Release artifacts are bare `.saver` zips; the documented install is the `curl`-based snippet in `.github/RELEASE_NOTES.md`. The reasoning, all confirmed live:
+Release artifacts are `.saver` zips with a separate license archive; the documented install is `tools/macos/install.sh`, embedded verbatim in `.github/RELEASE_NOTES.md`. The installer stages and verifies a new bundle, moves the old copy aside, verifies the installed replacement and rolls back on failure. It downloads the explicit release tag, not the moving latest-release URL. Close System Settings and dismiss the saver before installing. The reasoning, all confirmed live:
 
 - Browser downloads get `com.apple.quarantine`, and Gatekeeper hard-refuses quarantined ad-hoc-signed bundles with a misleading "is damaged" error. The real fix is a paid Developer ID plus notarization, **explicitly rejected** ($99/year).
 - `curl` never sets the quarantine attribute (only browsers do), so the snippet sidesteps Gatekeeper entirely. A helper `.command` script shipped in the zip does *not* work, because it arrives quarantined itself.
@@ -67,7 +67,7 @@ Release artifacts are bare `.saver` zips; the documented install is the `curl`-b
 
 ## Native validation baseline
 
-The corrected universal and arm64 builds passed all five Mac CTest suites, native Metal rendering/reset checks, and bundle/package signatures on 2026-10-22. Real Settings/fullscreen coexistence, physical dismissal, automatic idle activation, display-off, healthy host stopAnimation, system idle sleep and wake/unlock passed on the M1 built-in display. See `docs/fullscreen_ownership.md`. These checks predate the new density scheduler and v1.1.1 metadata; follow `docs/release_handoff.md` to validate the current branch on this Mac.
+The corrected universal and arm64 builds passed all five Mac CTest suites, native Metal rendering/reset checks, and bundle/package signatures on 2026-10-22. Real Settings/fullscreen coexistence, physical dismissal, automatic idle activation, display-off, healthy host stopAnimation, system idle sleep and wake/unlock passed on the M1 built-in display. See `docs/fullscreen_ownership.md`. The density scheduler and v1.1.1 metadata subsequently passed the native and visual checks recorded above on 2026-11-05; see `docs/releases/v1.1.1-validation.md`.
 
 Multiple physical Mac displays, Intel execution, actual GPU resource loss, and Mac view failure injection remain untested. Grace-only dismissal is deliberately ignored because the available input signal cannot distinguish it from hot-corner activation. Do not infer continued animation from a resident host process alone.
 

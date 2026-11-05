@@ -7,6 +7,7 @@
 - Preserve macOS Settings-preview/fullscreen coexistence by retaining its host lifecycle rather than applying the Windows/Linux fullscreen lease to views.
 - Add process-ownership, fractional-arrival and macOS view-lifecycle regression coverage. Verify the new density on native Windows, macOS and Linux displays.
 - Add MIT licensing for original project contributions, preserve third-party notices, and distribute license documents alongside release binaries.
+- Add a macOS upgrade installer with signature checks, bundle replacement and automatic rollback, and document the Windows Visual C++ runtime requirement.
 - Introduce this changelog; keep release installation instructions separate.
 
 ## [1.1.0] — 2026-10-06

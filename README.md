@@ -16,7 +16,7 @@ I've been running the original screensaver on nearly every machine I've owned si
 - **Classic terminal font.** The original look, recreated with an embedded 8x12 font and 480 glyphs (see [Terminal font](#terminal-font)).
 - **Carefully tuned colors.** A shared green palette, with explicit sRGB tagging for macOS Metal output and the animated preview.
 - **Native previews.** A live Windows settings preview and a macOS settings thumbnail and preview.
-- **Self-contained, with no setup to tune.** One file or bundle per platform, with the font and SDL2 included. No configuration files or settings to manage.
+- **SDL2 and font included, with no setup to tune.** One executable or bundle per platform, with no application configuration files or settings to manage. The Windows release requires the [Microsoft Visual C++ v14 Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/); Linux uses the system C/C++ runtime libraries.
 - **Respects display sleep.** Your monitors can still turn off on schedule while the screensaver runs.
 
 <details>
