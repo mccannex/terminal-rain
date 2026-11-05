@@ -60,6 +60,9 @@ Download Terminal Rain from the [latest release](https://github.com/mccannex/ter
 
 ## Building
 
+<details>
+<summary>Build from source and run tests</summary>
+
 Needs CMake 3.16 or later and a C++17 compiler. CMake downloads and builds SDL2 itself.
 
 ```bash
@@ -80,6 +83,8 @@ ctest --test-dir build -C Release --output-on-failure
 ```
 
 The tests cover zombie-cleanup timing, preview cleanup, render failures, and reset delivery across multiple fields. Windows also runs a hidden-window accelerated-renderer check, and macOS checks the Metal output's sRGB color space and simultaneous Settings/fullscreen view lifecycle. Add `-LE native` to the CTest command on machines without a graphics session. On a renderer reset or rendering failure, the saver stops cleanly rather than continuing with a lost persistent image. The release workflows run the checks that do not require a graphics session.
+
+</details>
 
 ## Terminal font
 
