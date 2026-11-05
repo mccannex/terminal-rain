@@ -1,11 +1,6 @@
 # Changelog
 
-Notable changes to Terminal Rain, formerly Glyph Rain. Earlier entries were
-reconstructed from release tags, commits and the v1.1.0 release notes. The five
-initial v1.0.x tags were created on the same day and are grouped below. Dates
-use America/Denver; v1.1.1 remains a draft until published.
-
-## [1.1.1] — Unreleased
+## [1.1.1] — 2026-11-05
 
 - Prevent overlapping fullscreen launches on Windows and Linux. A duplicate
   exits successfully without opening windows; ownership releases after normal
