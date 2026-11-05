@@ -2,7 +2,7 @@
 
 ## v1.1.1 validation
 
-Windows, Mac and Linux density validation is complete within the recorded hardware limits. See `docs/releases/v1.1.1-validation.md` for source/build evidence, native observations and power-management checks carried forward after runtime review. The release remains an unpublished draft pending final installer review and publishing approval.
+Windows, Mac and Linux density validation is complete within the recorded hardware limits. See `docs/releases/v1.1.1-validation.md` for source/build evidence, native observations and power-management checks carried forward after runtime review. v1.1.1 was published as the latest release on 2026-11-05 at final tag `5053664`; all final build jobs and native Mac installer checks passed.
 
 On 2026-11-05, checkout `d3be66d` (runtime `d5ad85d`) was rebuilt as Release in `build/linux` with tests enabled; all four expected suites passed. The idle wrapper points at this build. Saved AC delays remain 300 seconds for the script and 1,800 seconds for display-off; no settings were changed. Native Wayland/OpenGL rendering checks passed, and the user approved density, glyph sharpness, four-display/panel coverage and mouse dismissal. A visible duplicate exited zero without disrupting the owner; the owner then exited zero with no process left. KDE reports AC active. Actual idle/display-off/wake and suspend tests from October were carried forward after review: those paths and the 50-ms cadence are unchanged; only bounded stream arrivals changed. They were not repeated today. See the validation record for exact build, process evidence and remaining limits.
 

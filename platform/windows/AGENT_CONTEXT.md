@@ -2,7 +2,7 @@
 
 ## v1.1.1 validation
 
-Windows, Mac and Linux density validation is complete within the recorded hardware limits. See `docs/releases/v1.1.1-validation.md` for source/build evidence, native observations and power-management checks carried forward after runtime review. The release remains an unpublished draft pending final installer review and publishing approval.
+Windows, Mac and Linux density validation is complete within the recorded hardware limits. See `docs/releases/v1.1.1-validation.md` for source/build evidence, native observations and power-management checks carried forward after runtime review. v1.1.1 was published as the latest release on 2026-11-05 at final tag `5053664`; all final build jobs and native Mac installer checks passed.
 
 Maintenance reference for the Windows target. See the root README for the project overview and the Linux/macOS context files for their integrations.
 
