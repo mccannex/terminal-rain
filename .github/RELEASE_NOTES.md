@@ -1,9 +1,14 @@
-## What's new in v1.1.1
+See the [changelog](https://github.com/mccannex/terminal-rain/blob/main/CHANGELOG.md)
+for release history, or download `CHANGELOG.md` from the assets below.
 
-- **Prevent duplicate fullscreen launches on Windows and Linux.** A second launch exits without opening another set of windows. Ownership releases after normal exit or a crash.
-- **More consistent rain density.** Stream arrivals scale with each display's glyph-column count, preserving the denser 720p look on larger surfaces. Glyph sizes, speeds, and trail lengths are unchanged.
-- **Preserve macOS Settings/fullscreen coexistence.** macOS retains its established host lifecycle and background cleanup; duplicate protection is limited to Windows and Linux.
-- **Expanded regression coverage.** New process-ownership tests and a macOS bundle test cover simultaneous Settings/fullscreen views and stop/restart behavior.
+## License documents
+
+Download `Terminal.Rain-Licenses.zip` alongside your platform's executable or
+screensaver bundle. It contains the MIT license for original project contributions
+and the preserved third-party notices and license texts. Extract it and keep
+those documents with redistributed copies. The inherited simulation, SDL2 and
+font retain their respective terms; see
+[third-party notices](https://github.com/mccannex/terminal-rain/blob/main/THIRD_PARTY_NOTICES.md).
 
 ## Installing
 

@@ -107,7 +107,8 @@ cleanup crash are in `docs/fullscreen_ownership.md`.
 passed Windows, Linux, Mac and draft creation for tag `v1.1.1` at `53b990c`.
 Runtime/build/test sources match validated `d5ad85d`; later changes are docs only.
 The draft is named Terminal Rain v1.1.1, is not a prerelease, and its body matches
-`.github/RELEASE_NOTES.md`. All three assets are uploaded and were downloaded:
+`.github/RELEASE_NOTES.md` at build time. All three platform assets are uploaded
+and were downloaded:
 
 - `terminal-rain`: x86-64 ELF; dependencies resolve on Fedora; entry-point
   duplicate-launch suite passed against the downloaded executable. Bytes match
@@ -126,6 +127,19 @@ The Fedora idle wrapper continues to launch the locally built, user-approved
 `build/linux/terminal-rain` with hash recorded above. It was rebuilt and all four
 CTest suites passed again before tagging. No saver process was left running.
 The local checkout is main. Publishing awaits the user's final approval.
+
+After draft creation, the user authorized MIT licensing for project contributions
+and a retrospective changelog. Main now includes `LICENSE`, scoped third-party
+notices, the original CC BY 3.0/SDL2/font texts, and `CHANGELOG.md`. The initial
+v1.0.0–v1.0.4 tags are combined in one entry; v1.1.0 and draft v1.1.1 have their
+own entries. Release dates use America/Denver. The draft's body now links to the
+changelog instead of embedding a What's New section, and includes instructions
+for the accompanying `Terminal.Rain-Licenses.zip`. That archive and `CHANGELOG.md`
+are added as release assets. The release workflow packages both automatically
+for future releases. The existing v1.1.1 tag and three verified platform files
+are unchanged; these documents were added afterward on main and to the draft.
+No runtime or bundle resources changed, so native testing and signatures remain
+applicable. Publishing still requires the user's final approval.
 
 ## Release boundary and known limits
 

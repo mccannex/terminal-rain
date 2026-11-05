@@ -139,6 +139,9 @@ jobs:
 
       - uses: actions/download-artifact@v4
 
+      - name: Package license documents
+        run: python3 tools/package_release_documents.py Terminal.Rain-Licenses.zip
+
       # .github/RELEASE_NOTES.md carries the actual install instructions --
       # in particular the macOS curl-instead-of-browser-download command,
       # and why (see platform/macos/AGENT_CONTEXT.md's "Distribution"
@@ -156,3 +159,5 @@ jobs:
             Terminal Rain-windows/**
             Terminal Rain-linux/**
             Terminal Rain-macos/**
+            Terminal.Rain-Licenses.zip
+            CHANGELOG.md

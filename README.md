@@ -26,7 +26,7 @@ machines. I like it a lot. Maybe you'll like it too.
   tested on Wayland.
   [Download releases](https://github.com/mccannex/terminal-rain/releases).
 - **Multi-monitor support.** The screensaver covers every display, with coordinated dismissal.
-- **Consistent density and HiDPI support.** Stream density scales with display area, while
+- **Consistent density and HiDPI support.** Stream arrivals scale with glyph-column count, while
   glyph sizing accounts for display scaling, including mixed-DPI setups.
 - **Classic terminal font.** The original look, recreated with an embedded 8x12 font and
   480 glyphs (see [Terminal font](#terminal-font)).
@@ -140,6 +140,17 @@ plus 224 extra Latin, Cyrillic and symbol glyphs. It then writes that sheet out 
 (`core/glyph_atlas_data.cpp`) that's compiled into every binary. So no platform needs the font
 installed, and the screensaver uses the same glyph shapes everywhere. The script
 only needs to run again if the font changes.
+
+## License
+
+Original contributions by mccannex are available under the [MIT License](LICENSE).
+The inherited simulation remains under CC BY 3.0; SDL2 and the font retain their
+own terms. See [third-party notices](THIRD_PARTY_NOTICES.md) for attribution,
+license texts and the font author's qualification. Download
+`Terminal.Rain-Licenses.zip` alongside a release binary and keep its documents
+with redistributed copies.
+
+Release history is in the [changelog](CHANGELOG.md).
 
 ## Credits
 
