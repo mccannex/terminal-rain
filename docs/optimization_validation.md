@@ -1,48 +1,17 @@
 # Windows and shared-core optimization validation
 
-Implementation/validation performed on Windows 10 (10.0.19045), 2026-10-06.
-Baseline: `3b00f06def7c740c1caaeec8490c5dcd9873597e` (reviewed for issue #4).
+Implementation/validation performed on Windows 10 (10.0.19045), 2026-10-06. Baseline: `3b00f06def7c740c1caaeec8490c5dcd9873597e` (reviewed for issue #4).
 
-Historical evidence from October 6 follows; references to pending work describe
-that session, not the current release checklist. Later native idle/display-power,
-Mac preview/healthy-stop and cross-platform checks supersede those gaps in
-`docs/fullscreen_ownership.md`. For current v1.1.1 status and Linux continuation,
-read `docs/release_handoff.md`. Actual GPU loss and the hardware limitations
-listed there remain untested.
+Historical evidence from October 6 follows; references to pending work describe that session, not the current release checklist. Later native idle/display-power, Mac preview/healthy-stop and cross-platform checks supersede those gaps in `docs/fullscreen_ownership.md`. For current v1.1.1 status and Linux continuation, read `docs/release_handoff.md`. Actual GPU loss and the hardware limitations listed there remain untested.
 
 ## Changes and remaining platform work
 
-- #7: preview's field/target now dies before its renderer. Repeated hidden
-  preview-loop checks passed, with GNU linker wrappers checking ownership order.
-- #6: Windows fullscreen/preview and Linux enable SDL's allow-screensaver hint
-  before video initialization. Native Windows initialization leaves the test
-  thread's display-required execution-state request clear. Real display timeout,
-  wake behavior, and Linux power-management integration still need native checks.
-- #8: target creation, initial binding/clear/restoration, drawing, and final
-  copy failures stop rendering. Every field installs an SDL reset watch; it only
-  sets an atomic flag, so callbacks never render or destroy resources on another
-  thread. Both reset events cause clean shutdown, including when another consumer
-  drains the queue. The multi-display loop also rejects partial setup instead of
-  leaving a monitor uncovered. macOS's caller stops its timer/resources on failure
-  rather than retrying failed setup every frame. That adaptation is now built;
-  its native Metal setup/rendering check passed, while rendering-failure and
-  actual GPU-loss shutdown remain unverified.
-- #10: individual invisible glyphs and erase cells are excluded before queueing
-  and sorting. Simulation, random-number consumption, visible trailing erases,
-  and color/erase pass ordering are retained. No color-bucket rewrite was needed.
-- #5: Linux/macOS release jobs and macOS local instructions explicitly select
-  Release. All release jobs now build/run the portable regression checks; Windows
-  continues to select Release with its multi-configuration build command. The
-  Windows checks above are historical; Linux CI/native coverage and macOS CI
-  coverage have not been run for this working-tree change. The local macOS arm64
-  Release build and native checks are documented below.
-- #9: macOS zombie confirmation now starts at the first unlocked qualifying
-  observation and uses a fixed two-second window, so sustained input cannot
-  postpone shutdown. Automated timing/rendering checks and two real fullscreen
-  host runs passed; grace-only dismissal remains intentionally ambiguous. Native
-  preview-host lifecycle/cleanup, multi-display, naturally delivered healthy
-  stop/start, delayed lock-state clearing, and actual GPU-loss shutdown remain
-  unverified; Intel hardware is also untested.
+- #7: preview's field/target now dies before its renderer. Repeated hidden preview-loop checks passed, with GNU linker wrappers checking ownership order.
+- #6: Windows fullscreen/preview and Linux enable SDL's allow-screensaver hint before video initialization. Native Windows initialization leaves the test thread's display-required execution-state request clear. Real display timeout, wake behavior, and Linux power-management integration still need native checks.
+- #8: target creation, initial binding/clear/restoration, drawing, and final copy failures stop rendering. Every field installs an SDL reset watch; it only sets an atomic flag, so callbacks never render or destroy resources on another thread. Both reset events cause clean shutdown, including when another consumer drains the queue. The multi-display loop also rejects partial setup instead of leaving a monitor uncovered. macOS's caller stops its timer/resources on failure rather than retrying failed setup every frame. That adaptation is now built; its native Metal setup/rendering check passed, while rendering-failure and actual GPU-loss shutdown remain unverified.
+- #10: individual invisible glyphs and erase cells are excluded before queueing and sorting. Simulation, random-number consumption, visible trailing erases, and color/erase pass ordering are retained. No color-bucket rewrite was needed.
+- #5: Linux/macOS release jobs and macOS local instructions explicitly select Release. All release jobs now build/run the portable regression checks; Windows continues to select Release with its multi-configuration build command. The Windows checks above are historical; Linux CI/native coverage and macOS CI coverage have not been run for this working-tree change. The local macOS arm64 Release build and native checks are documented below.
+- #9: macOS zombie confirmation now starts at the first unlocked qualifying observation and uses a fixed two-second window, so sustained input cannot postpone shutdown. Automated timing/rendering checks and two real fullscreen host runs passed; grace-only dismissal remains intentionally ambiguous. Native preview-host lifecycle/cleanup, multi-display, naturally delivered healthy stop/start, delayed lock-state clearing, and actual GPU-loss shutdown remain unverified; Intel hardware is also untested.
 
 ## Executed checks
 
@@ -54,117 +23,45 @@ cmake --build build-mingw -j 4
 ctest --test-dir build-mingw --output-on-failure --timeout 30
 ```
 
-On the Windows run recorded here, both CTest suites passed: the
-dummy-video/software suite and a native Windows hidden-window suite using
-`direct3d11`. They cover ordinary drawing, previous-target
-restoration, invalid dimensions, injected target allocation/binding failures,
-runtime drawing failure, both reset types across two fields after queue draining,
-restart after teardown, repeated preview shutdown, and preview input/reset behavior.
-GNU-only fault injection/ownership checks run on MinGW; other toolchains run the
-portable paths. Native Windows additionally checks its thread's execution-state
-request and reads back nonblack pixels from an accelerated target. Reset events
-were synthetic: these tests do not simulate actual GPU resource loss.
+On the Windows run recorded here, both CTest suites passed: the dummy-video/software suite and a native Windows hidden-window suite using `direct3d11`. They cover ordinary drawing, previous-target restoration, invalid dimensions, injected target allocation/binding failures, runtime drawing failure, both reset types across two fields after queue draining, restart after teardown, repeated preview shutdown, and preview input/reset behavior. GNU-only fault injection/ownership checks run on MinGW; other toolchains run the portable paths. Native Windows additionally checks its thread's execution-state request and reads back nonblack pixels from an accelerated target. Reset events were synthetic: these tests do not simulate actual GPU resource loss.
 
-The tests require no visible fullscreen windows. On a headless machine, exclude
-the optional native test with `ctest --test-dir build -C Release -LE native`.
+The tests require no visible fullscreen windows. On a headless machine, exclude the optional native test with `ctest --test-dir build -C Release -LE native`.
 
-The user visually verified the embedded Windows Screen Saver settings thumbnail
-and approved the final glyph size and sustained stream density.
+The user visually verified the embedded Windows Screen Saver settings thumbnail and approved the final glyph size and sustained stream density.
 
-For the Windows/shared-core pass, still manual: physical input dismissal on
-multiple monitors, real idle activation and display-off/wake transitions, and
-actual device-loss recovery/shutdown. Native Linux build/runtime coverage and
-the Windows display/device checks remain pending. The local macOS arm64 build,
-signature, automated checks, and single-display host runs are documented below,
-with the remaining Mac gaps listed there.
+For the Windows/shared-core pass, still manual: physical input dismissal on multiple monitors, real idle activation and display-off/wake transitions, and actual device-loss recovery/shutdown. Native Linux build/runtime coverage and the Windows display/device checks remain pending. The local macOS arm64 build, signature, automated checks, and single-display host runs are documented below, with the remaining Mac gaps listed there.
 
 ## Display power-management follow-up (issue #6)
 
-After pulling `dff6f92`, the full Windows 10/MinGW Release build and all three
-CTest suites (`zombie_confirmation`, `rendering`, and `rendering_windows`) passed.
-The original cross-platform CI run on `95df724` also completed successfully on
-Windows, Linux, and macOS; that is distinct from testing the later Mac changes.
+After pulling `dff6f92`, the full Windows 10/MinGW Release build and all three CTest suites (`zombie_confirmation`, `rendering`, and `rendering_windows`) passed. The original cross-platform CI run on `95df724` also completed successfully on Windows, Linux, and macOS; that is distinct from testing the later Mac changes.
 
-The user reported an explicit native Wayland test on the Linux machine using
-monitor shutdown timeouts: displays powered off while the updated saver ran,
-then mouse movement restored the desktops normally. X11 was not tested.
+The user reported an explicit native Wayland test on the Linux machine using monitor shutdown timeouts: displays powered off while the updated saver ran, then mouse movement restored the desktops normally. X11 was not tested.
 
-On Windows, `tools/windows/test-display-idle.ps1` temporarily changed the active
-Balanced plan's AC display timeout from Never to 60 seconds and launched the real
-built `.scr` with `/s`. The user confirmed every display powered off and mouse
-movement woke/dismissed correctly. The saver exited with code 0. The helper
-restored the AC timeout to Never; a subsequent `powercfg /query` verified that
-value and the unchanged DC timeout of 300 seconds. `powercfg /requests` was not
-available without administrator privileges, so no global request-list result is
-claimed; the native regression's thread execution-state check remains the
-automated evidence for absence of SDL's display-required request.
+On Windows, `tools/windows/test-display-idle.ps1` temporarily changed the active Balanced plan's AC display timeout from Never to 60 seconds and launched the real built `.scr` with `/s`. The user confirmed every display powered off and mouse movement woke/dismissed correctly. The saver exited with code 0. The helper restored the AC timeout to Never; a subsequent `powercfg /query` verified that value and the unchanged DC timeout of 300 seconds. `powercfg /requests` was not available without administrator privileges, so no global request-list result is claimed; the native regression's thread execution-state check remains the automated evidence for absence of SDL's display-required request.
 
-A second run used `-AutomaticActivation -DisplayOffSeconds 60
--MaximumTestSeconds 90`. The helper temporarily changed the installed saver's
-activation timeout from 300 to 30 seconds, observed Windows automatically launch
-the fullscreen saver, and restored both settings after 90 seconds. The user
-confirmed automatic activation, display-off on every display, and normal mouse
-wake/dismissal. The helper logged restoration of the 300-second saver timeout
-and original Never AC display timeout.
+A second run used `-AutomaticActivation -DisplayOffSeconds 60 -MaximumTestSeconds 90`. The helper temporarily changed the installed saver's activation timeout from 300 to 30 seconds, observed Windows automatically launch the fullscreen saver, and restored both settings after 90 seconds. The user confirmed automatic activation, display-off on every display, and normal mouse wake/dismissal. The helper logged restoration of the 300-second saver timeout and original Never AC display timeout.
 
-The helper is an interactive diagnostic, not a production change. It restores
-temporary settings in `finally`; forcibly terminating the PowerShell host can
-prevent restoration. Physical keyboard, scrolling, and first-click dismissal
-across monitors were not separately exercised during this follow-up.
+The helper is an interactive diagnostic, not a production change. It restores temporary settings in `finally`; forcibly terminating the PowerShell host can prevent restoration. Physical keyboard, scrolling, and first-click dismissal across monitors were not separately exercised during this follow-up.
 
 ## Rendering-failure resolution review (issue #8)
 
-The post-pull Windows CTest log confirms software rendering and the native
-`direct3d11` backend passed. Coverage includes injected texture-allocation and
-initial/runtime target-binding failures, genuine wrong-renderer atlas draw
-failure, previous-target restoration, destruction order, both reset types across
-two fields after queue draining, teardown/restart, and preview loop shutdown.
-Device-reset handling stops the field; callers destroy the field and atlas before
-the renderer rather than continuing to use either potentially invalid texture.
+The post-pull Windows CTest log confirms software rendering and the native `direct3d11` backend passed. Coverage includes injected texture-allocation and initial/runtime target-binding failures, genuine wrong-renderer atlas draw failure, previous-target restoration, destruction order, both reset types across two fields after queue draining, teardown/restart, and preview loop shutdown. Device-reset handling stops the field; callers destroy the field and atlas before the renderer rather than continuing to use either potentially invalid texture.
 
-The macOS follow-up below supplies local arm64 Release build/signature checks,
-native Metal rendering/readback and synthetic-reset shutdown, plus real saver
-host launch/dismissal checks. The issue #6 follow-up above additionally records
-normal physical display power transitions on Windows and Linux Wayland. These
-display-off/wake checks are not evidence that a GPU device-reset event occurred.
+The macOS follow-up below supplies local arm64 Release build/signature checks, native Metal rendering/readback and synthetic-reset shutdown, plus real saver host launch/dismissal checks. The issue #6 follow-up above additionally records normal physical display power transitions on Windows and Linux Wayland. These display-off/wake checks are not evidence that a GPU device-reset event occurred.
 
-The initialization and reset implementation is complete and its failure/dispatch
-checks pass, so issue #8 can be resolved with these limits recorded. Actual GPU
-resource loss has not been induced. Native macOS view failure injection, full
-preview-host lifecycle, multiple Mac displays, Intel Mac hardware, and X11 remain
-untested. The recorded native Wayland check does not include Linux-specific fault
-injection or an identified accelerated renderer. These are remaining coverage
-gaps, not claims that the corresponding hardware conditions were reproduced.
+The initialization and reset implementation is complete and its failure/dispatch checks pass, so issue #8 can be resolved with these limits recorded. Actual GPU resource loss has not been induced. Native macOS view failure injection, full preview-host lifecycle, multiple Mac displays, Intel Mac hardware, and X11 remain untested. The recorded native Wayland check does not include Linux-specific fault injection or an identified accelerated renderer. These are remaining coverage gaps, not claims that the corresponding hardware conditions were reproduced.
 
 ## Windows settings thumbnail
 
-The preview renders an aspect-matched canvas at least 320 pixels wide, scales it
-with linear filtering, and primes 600 ticks before presenting. Preview-only trail
-and cleanup distances scale with the canvas height; fullscreen defaults remain
-unchanged. This prevents the small surface's stream cap being occupied for long
-periods by heads far below the visible canvas.
+The preview renders an aspect-matched canvas at least 320 pixels wide, scales it with linear filtering, and primes 600 ticks before presenting. Preview-only trail and cleanup distances scale with the canvas height; fullscreen defaults remain unchanged. This prevents the small surface's stream cap being occupied for long periods by heads far below the visible canvas.
 
-A software-renderer diagnostic at 320x234, with seeds 1, 7, and 12345, measured
-12,000 ticks per seed after the 600-tick warmup. With the original trail distances,
-visible heads fell to zero and averaged about 9.5, with stretches below four heads
-lasting 4.0-4.45 simulated seconds. Compact preview trails kept at least 32, 39,
-and 35 heads visible respectively, averaging 53.7. These counts describe the
-simulation, not screenshot brightness. The final preview capture took about
-194 ms to initialize, prime, present, and exit on this machine.
+A software-renderer diagnostic at 320x234, with seeds 1, 7, and 12345, measured 12,000 ticks per seed after the 600-tick warmup. With the original trail distances, visible heads fell to zero and averaged about 9.5, with stretches below four heads lasting 4.0-4.45 simulated seconds. Compact preview trails kept at least 32, 39, and 35 heads visible respectively, averaging 53.7. These counts describe the simulation, not screenshot brightness. The final preview capture took about 194 ms to initialize, prime, present, and exit on this machine.
 
 ## Optimized baseline versus complete current core
 
-Compiler: MSYS2 UCRT64 GCC 13.2.0, `-O3 -DNDEBUG -std=c++17`. SDL: the same
-statically linked Release SDL 2.30.9 library in both variants. CPU: AMD Ryzen 5
-3500U. Available adapters: Radeon Vega 8 and Trigger 6 External Graphics; the
-specific adapter used by SDL's Direct3D 11 renderer was not separately identified.
+Compiler: MSYS2 UCRT64 GCC 13.2.0, `-O3 -DNDEBUG -std=c++17`. SDL: the same statically linked Release SDL 2.30.9 library in both variants. CPU: AMD Ryzen 5 3500U. Available adapters: Radeon Vega 8 and Trigger 6 External Graphics; the specific adapter used by SDL's Direct3D 11 renderer was not separately identified.
 
-Each reported row uses three alternating baseline/current process runs. Values
-are medians of mean elapsed time per tick within each run. The current core also
-includes the failure/reset checks. Times measure `field.tick()` only, excluding
-diagnostic counting/readback, final window copy/presentation, 50-ms pacing,
-compositing, and macOS HID polling. Direct3D timings reflect CPU-side rendering
-work/submission, not isolated GPU completion time or total application CPU usage.
+Each reported row uses three alternating baseline/current process runs. Values are medians of mean elapsed time per tick within each run. The current core also includes the failure/reset checks. Times measure `field.tick()` only, excluding diagnostic counting/readback, final window copy/presentation, 50-ms pacing, compositing, and macOS HID polling. Direct3D timings reflect CPU-side rendering work/submission, not isolated GPU completion time or total application CPU usage.
 
 | Renderer/workload | Warm-up ticks | Measured ticks/run | Baseline ms/tick | Current ms/tick | Reduction |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -178,9 +75,7 @@ Raw per-run mean timings (baseline/current):
 - Software 4K: 3.9618/3.7041, 4.0488/3.7461, 3.9711/3.7678.
 - Direct3D 11 1080p: 0.5029/0.2308, 0.5257/0.2253, 0.4912/0.2231.
 
-At 1080p, mean active streams remained 1014.4; glyph queue length fell from 2026.8
-to 626.0 and erase rectangles from 4053.5 to 1254.7. At 4K, the corresponding glyph
-counts were 2447.5/1247.4 and erase counts 4894.9/2410.8, with active streams 1224.5.
+At 1080p, mean active streams remained 1014.4; glyph queue length fell from 2026.8 to 626.0 and erase rectangles from 4053.5 to 1254.7. At 4K, the corresponding glyph counts were 2447.5/1247.4 and erase counts 4894.9/2410.8, with active streams 1224.5.
 
 Sampled persistent-image hashes matched baseline/current at all tested dimensions:
 
@@ -191,17 +86,11 @@ Sampled persistent-image hashes matched baseline/current at all tested dimension
 | Software and Direct3D 11 1920x1080, scale 1 | `d707f66e28181ba0` |
 | Software 3840x2160, scale 1 | `1b99c2f9aa554bc0` |
 
-These are deterministic sampled comparisons with seed 12345, not an exhaustive
-proof of pixel equality for every possible seed/backend. The matching signatures
-and unchanged RNG consumption cover startup, below-screen heads/visible erases,
-partial cells at fractional scaling, and steady animation in the tested workloads.
+These are deterministic sampled comparisons with seed 12345, not an exhaustive proof of pixel equality for every possible seed/backend. The matching signatures and unchanged RNG consumption cover startup, below-screen heads/visible erases, partial cells at fractional scaling, and steady animation in the tested workloads.
 
 ## Reproduction probe
 
-This is temporary diagnostic code, not a production API. Its private-member access
-allows identical deterministic seeding and queue counting for the original and
-current field without adding production test hooks. Save it as
-`build-mingw/perf_probe.cpp`. The benchmark deliberately does not pace frames.
+This is temporary diagnostic code, not a production API. Its private-member access allows identical deterministic seeding and queue counting for the original and current field without adding production test hooks. Save it as `build-mingw/perf_probe.cpp`. The benchmark deliberately does not pace frames.
 
 ```cpp
 #define SDL_MAIN_HANDLED
@@ -250,9 +139,7 @@ int main(int argc,char** argv) {
 }
 ```
 
-Preserve the baseline source/header together, then compile both against the same
-SDL library. These commands assume the existing MinGW Release build and compiler
-paths on this Windows machine; adapt paths/link dependencies for another platform.
+Preserve the baseline source/header together, then compile both against the same SDL library. These commands assume the existing MinGW Release build and compiler paths on this Windows machine; adapt paths/link dependencies for another platform.
 
 ```powershell
 New-Item -ItemType Directory -Force build-mingw/baseline | Out-Null
@@ -290,8 +177,7 @@ try {
 }
 ```
 
-For the other sampled workloads, pass `256 192 800 400 1`,
-`801 603 1600 500 1.25`, or `3840 2160 1600 500 1` respectively.
+For the other sampled workloads, pass `256 192 800 400 1`, `801 603 1600 500 1.25`, or `3840 2160 1600 500 1` respectively.
 
 ## macOS confirmation follow-up (issue #9)
 
@@ -305,56 +191,18 @@ codesign --verify --deep --strict "build/Terminal Rain.saver"
 ./build/terminal_rain_rendering_tests --native
 ```
 
-Both `zombie_confirmation` and `rendering` passed; bundle signature verification
-passed. The native hidden-window regression also passed using Metal, including
-nonblack pixel readback and synthetic reset shutdown. It required display-service
-access outside the filesystem sandbox; the sandboxed attempt could not enumerate
-displays. The pure timing tests use simulated monotonic seconds without real waits:
-sustained and single input, delayed unlock after a single event, locked password
-entry, locking during pending confirmation, preview exemption, grace boundaries,
-invalid HID samples, and repeated healthy stop/restart cycles.
+Both `zombie_confirmation` and `rendering` passed; bundle signature verification passed. The native hidden-window regression also passed using Metal, including nonblack pixel readback and synthetic reset shutdown. It required display-service access outside the filesystem sandbox; the sandboxed attempt could not enumerate displays. The pure timing tests use simulated monotonic seconds without real waits: sustained and single input, delayed unlock after a single event, locked password entry, locking during pending confirmation, preview exemption, grace boundaries, invalid HID samples, and repeated healthy stop/restart cycles.
 
-Confirmation now starts at the first unlocked qualifying observation and remains
-fixed despite subsequent input. Locked/preview frames cancel it. On unlock, the
-HID age retains evidence of post-grace input even if lock-state reporting lagged;
-a full two-second unlocked window protects legitimate password entry. Both the
-confirmation and independent four-hour watchdog use steady-clock elapsed time.
-Input only within the startup grace remains ignored: the available signals cannot
-reliably distinguish dismissal from legitimate hot-corner activation.
+Confirmation now starts at the first unlocked qualifying observation and remains fixed despite subsequent input. Locked/preview frames cancel it. On unlock, the HID age retains evidence of post-grace input even if lock-state reporting lagged; a full two-second unlocked window protects legitimate password entry. Both the confirmation and independent four-hour watchdog use steady-clock elapsed time. Input only within the startup grace remains ignored: the available signals cannot reliably distinguish dismissal from legitimate hot-corner activation.
 
-These automated checks do not prove actual legacyScreenSaver process death after
-physical dismissal. The native host runs below cover locked animation, physical
-dismissal, post-unlock process death, and continuous input on one built-in display.
-Delayed lock-state clearing, naturally delivered healthy stop/start, preview-host
-lifecycle/cleanup, multiple monitors, actual GPU-loss shutdown, and Intel hardware
-remain pending; the applicable timing/state transitions remain covered by
-automated tests. The rebuilt saver was subsequently installed and tested as
-described below.
+These automated checks do not prove actual legacyScreenSaver process death after physical dismissal. The native host runs below cover locked animation, physical dismissal, post-unlock process death, and continuous input on one built-in display. Delayed lock-state clearing, naturally delivered healthy stop/start, preview-host lifecycle/cleanup, multiple monitors, actual GPU-loss shutdown, and Intel hardware remain pending; the applicable timing/state transitions remain covered by automated tests. The rebuilt saver was subsequently installed and tested as described below.
 
 ### Native host verification
 
-The local bundle was installed in `~/Library/Screen Savers/Terminal Rain.saver`
-and launched twice through the real ScreenSaverEngine on 2026-10-06. Global logs
-and 250 ms process samples tracked the engine and legacyScreenSaver separately.
-The existing installed bundle was backed up to
-`/tmp/terminal-rain-before-native-check.saver` before the first install.
+The local bundle was installed in `~/Library/Screen Savers/Terminal Rain.saver` and launched twice through the real ScreenSaverEngine on 2026-10-06. Global logs and 250 ms process samples tracked the engine and legacyScreenSaver separately. The existing installed bundle was backed up to `/tmp/terminal-rain-before-native-check.saver` before the first install.
 
-- Single-input run: legacyScreenSaver PID 82705 rendered at 1440x900 with
-  1,875 streams, reporting 201/401/601 frames at roughly ten-second intervals.
-  It stayed running while locked. ScreenSaverEngine disappeared at monitor
-  elapsed 31.35 s; the host logged confirmed-input termination at 11:18:01.945
-  with HID idle 2.03 s and disappeared by elapsed 33.63 s.
-- Continuous-input run: host PID 83077 again remained active while locked.
-  ScreenSaverEngine disappeared at elapsed 30.07 s; the host logged termination
-  at 11:18:44.365 with HID idle only 0.01 s and disappeared by elapsed 32.52 s.
-  This confirms subsequent activity did not postpone the confirmation deadline.
-- Both runs logged the final stopAnimation call and actual host process death,
-  rather than merely disappearance of the fullscreen window.
+- Single-input run: legacyScreenSaver PID 82705 rendered at 1440x900 with 1,875 streams, reporting 201/401/601 frames at roughly ten-second intervals. It stayed running while locked. ScreenSaverEngine disappeared at monitor elapsed 31.35 s; the host logged confirmed-input termination at 11:18:01.945 with HID idle 2.03 s and disappeared by elapsed 33.63 s.
+- Continuous-input run: host PID 83077 again remained active while locked. ScreenSaverEngine disappeared at elapsed 30.07 s; the host logged termination at 11:18:44.365 with HID idle only 0.01 s and disappeared by elapsed 32.52 s. This confirms subsequent activity did not postpone the confirmation deadline.
+- Both runs logged the final stopAnimation call and actual host process death, rather than merely disappearance of the fullscreen window.
 
-The rebuilt local bundle remains installed. These runs establish real host
-launch, locked animation, post-dismissal cleanup after unlock, and cleanup during
-continuous input on the single built-in display. They do not cover multiple
-monitors, the full preview-host lifecycle/cleanup, a naturally delivered healthy
-stopAnimation, artificially delayed lock-state clearing, actual GPU loss, or
-Intel hardware. Those timing/state transitions remain covered by automated tests
-where applicable.
+The rebuilt local bundle remains installed. These runs establish real host launch, locked animation, post-dismissal cleanup after unlock, and cleanup during continuous input on the single built-in display. They do not cover multiple monitors, the full preview-host lifecycle/cleanup, a naturally delivered healthy stopAnimation, artificially delayed lock-state clearing, actual GPU loss, or Intel hardware. Those timing/state transitions remain covered by automated tests where applicable.

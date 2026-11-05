@@ -2,132 +2,42 @@
 
 ## v1.1.1 handoff
 
-Read `docs/release_handoff.md` first for the current source, completed
-Windows/Mac validation, green cross-platform CI and the Linux continuation
-checklist. Linux native density/integration validation is the next release step.
+Read `docs/release_handoff.md` first for the current source, completed Windows/Mac validation, green cross-platform CI and the Linux continuation checklist. Linux native density/integration validation is the next release step.
 
-On 2026-11-05, source `d5ad85d` passed Release arm64/universal builds, all five
-CTest suites for each build, separate native Metal rendering/reset tests, and
-bundle signatures plus the universal ZIP/extraction signature round trip on
-macOS 26.6.2. Native graphics tests need desktop access outside the execution
-sandbox. The CI bundle is installed; the user approved real-host density, sharp
-glyphs, built-in display coverage and physical dismissal on 2026-11-05. Logs
-confirmed 20 fps and input-confirmed host termination at 11:29:57 MDT; a direct
-process check found no remaining saver/engine. Real Settings-preview/fullscreen
-coexistence also passed with user confirmation: both views animated in the same
-host, physical dismissal exited the engine, the shared host terminated at
-11:33:58 MDT, and Settings restarted its preview normally. Continued-input
-preview restarts remain the accepted lifecycle. Intel execution is untested;
-automatic idle/display-off/sleep was not repeated for the density change.
-Fresh cross-platform CI run `42083438520` passed Windows, Linux and macOS jobs
-for the same source. Its downloaded universal Mac bundle also passed signature,
-version/deployment checks and the native bundle view lifecycle test on this Mac.
+On 2026-11-05, source `d5ad85d` passed Release arm64/universal builds, all five CTest suites for each build, separate native Metal rendering/reset tests, and bundle signatures plus the universal ZIP/extraction signature round trip on macOS 26.6.2. Native graphics tests need desktop access outside the execution sandbox. The CI bundle is installed; the user approved real-host density, sharp glyphs, built-in display coverage and physical dismissal on 2026-11-05. Logs confirmed 20 fps and input-confirmed host termination at 11:29:57 MDT; a direct process check found no remaining saver/engine. Real Settings-preview/fullscreen coexistence also passed with user confirmation: both views animated in the same host, physical dismissal exited the engine, the shared host terminated at 11:33:58 MDT, and Settings restarted its preview normally. Continued-input preview restarts remain the accepted lifecycle. Intel execution is untested; automatic idle/display-off/sleep was not repeated for the density change. Fresh cross-platform CI run `42083438520` passed Windows, Linux and macOS jobs for the same source. Its downloaded universal Mac bundle also passed signature, version/deployment checks and the native bundle view lifecycle test on this Mac.
 
-For any coding agent working on this repo's macOS target. Tracked in git so it
-travels between machines and sessions; update it with real status before you're
-done. The app is essentially finished, so this file is a reference for
-maintenance work, not a running build log.
+For any coding agent working on this repo's macOS target. Tracked in git so it travels between machines and sessions; update it with real status before you're done. The app is essentially finished, so this file is a reference for maintenance work, not a running build log.
 
 ## Project, in brief
 
-**Terminal Rain**: a cross-platform rewrite of a classic Win32/GDI "Matrix
-digital rain" screensaver (originally by Louai Munajim, CC BY 3.0) on top of
-SDL2, with a platform-agnostic simulation core (`core/`) shared across all
-targets. See the root `README.md` for credits, and
-`platform/linux/AGENT_CONTEXT.md` for the Linux integration.
+**Terminal Rain**: a cross-platform rewrite of a classic Win32/GDI "Matrix digital rain" screensaver (originally by Louai Munajim, CC BY 3.0) on top of SDL2, with a platform-agnostic simulation core (`core/`) shared across all targets. See the root `README.md` for credits, and `platform/linux/AGENT_CONTEXT.md` for the Linux integration.
 
-Development and testing happen on a 2020 MacBook Air (M1, 8 GB) running
-macOS 26 "Tahoe" (26.6.2 as of 2026-10-05).
+Development and testing happen on a 2020 MacBook Air (M1, 8 GB) running macOS 26 "Tahoe" (26.6.2 as of 2026-10-05).
 
 ## Architecture
 
-The macOS target (`platform/macos/TerminalRainView.mm`, CMake target
-`terminal_rain_saver`) is a `.saver` bundle: a loadable `NSBundle` plugin hosted
-by `legacyScreenSaver.appex`, not a standalone app like the Windows `.scr` or
-Linux binary. Key decisions, all still in force:
+The macOS target (`platform/macos/TerminalRainView.mm`, CMake target `terminal_rain_saver`) is a `.saver` bundle: a loadable `NSBundle` plugin hosted by `legacyScreenSaver.appex`, not a standalone app like the Windows `.scr` or Linux binary. Key decisions, all still in force:
 
-- **Command Line Tools only, no Xcode.app.** Everything needed (clang++,
-  `ScreenSaver.framework`, `codesign`) is in the CLT. The one gap is `ibtool`
-  (Xcode-only), so never use a XIB/storyboard: if a config sheet is ever
-  added (`hasConfigureSheet` currently returns `NO`), build its UI in code.
-- **SDL window is created lazily in `-startAnimation`**, via
-  `SDL_CreateWindowFrom((__bridge void*)self)`. At init time the view isn't
-  attached to a real `NSWindow` yet, and SDL resolves the window via
-  `[nsview window]`.
-- **Picker grid thumbnail** comes from the loose `thumbnail.png`/`@2x`
-  files in the bundle's Resources (generated by
-  `tools/generate_macos_thumbnail.py`), not from the view. Confirmed working
-  on macOS 26. **The picker caches the tile and never invalidates it** when
-  the PNG changes, which once made it look like macOS ignored the files.
-  The cache lives in
-  `$(getconf DARWIN_USER_CACHE_DIR)com.apple.wallpaper.extension.legacy/com.apple.wallpaper.legacy.thumbnails/`
-  as one 180x116 PNG per bundle, with a hashed filename. To refresh it,
-  delete that bundle's PNG (find it by its timestamp or by viewing it),
-  `killall WallpaperLegacyExtension`, then reopen System Settings.
-  Restarting System Settings or WallpaperAgent alone doesn't help.
-- **Minimum macOS is 26.** No `CMAKE_OSX_DEPLOYMENT_TARGET` is set, so the
-  deployment target defaults to the build SDK (`minos 26.0`, check with
-  `vtool -show-build`). Lowering it needs testing on an older macOS.
-- **Universal binary in CI** (`CMAKE_OSX_ARCHITECTURES="arm64;x86_64"` in
-  `release.yml`). The x86_64 slice has never run on Intel hardware. Local
-  builds are arm64-only unless you pass the same flag.
-- `animationTimeInterval = 1/20` matches the 50 ms frame interval the other
-  platforms use (`kFrameIntervalMs` in `core/app_loop.cpp`). Retina drawable
-  sizing comes free from SDL's Cocoa backend, with no manual scale handling.
-- **Re-signing on thumbnail changes.** The ad-hoc `codesign` step is a
-  `POST_BUILD` command that explicitly copies the thumbnails before signing
-  and verifies the finished bundle. Automatic CMake bundle resource copies
-  can run after `POST_BUILD` with some generators, leaving thumbnails outside
-  the resource seal. The command only runs when the module relinks. The
-  thumbnails are listed as `LINK_DEPENDS` so a thumbnail-only change still
-  relinks and re-signs. Without that, the bundle fails `codesign -v` with
-  "a sealed resource is missing or invalid".
+- **Command Line Tools only, no Xcode.app.** Everything needed (clang++, `ScreenSaver.framework`, `codesign`) is in the CLT. The one gap is `ibtool` (Xcode-only), so never use a XIB/storyboard: if a config sheet is ever added (`hasConfigureSheet` currently returns `NO`), build its UI in code.
+- **SDL window is created lazily in `-startAnimation`**, via `SDL_CreateWindowFrom((__bridge void*)self)`. At init time the view isn't attached to a real `NSWindow` yet, and SDL resolves the window via `[nsview window]`.
+- **Picker grid thumbnail** comes from the loose `thumbnail.png`/`@2x` files in the bundle's Resources (generated by `tools/generate_macos_thumbnail.py`), not from the view. Confirmed working on macOS 26. **The picker caches the tile and never invalidates it** when the PNG changes, which once made it look like macOS ignored the files. The cache lives in `$(getconf DARWIN_USER_CACHE_DIR)com.apple.wallpaper.extension.legacy/com.apple.wallpaper.legacy.thumbnails/` as one 180x116 PNG per bundle, with a hashed filename. To refresh it, delete that bundle's PNG (find it by its timestamp or by viewing it), `killall WallpaperLegacyExtension`, then reopen System Settings. Restarting System Settings or WallpaperAgent alone doesn't help.
+- **Minimum macOS is 26.** No `CMAKE_OSX_DEPLOYMENT_TARGET` is set, so the deployment target defaults to the build SDK (`minos 26.0`, check with `vtool -show-build`). Lowering it needs testing on an older macOS.
+- **Universal binary in CI** (`CMAKE_OSX_ARCHITECTURES="arm64;x86_64"` in `release.yml`). The x86_64 slice has never run on Intel hardware. Local builds are arm64-only unless you pass the same flag.
+- `animationTimeInterval = 1/20` matches the 50 ms frame interval the other platforms use (`kFrameIntervalMs` in `core/app_loop.cpp`). Retina drawable sizing comes free from SDL's Cocoa backend, with no manual scale handling.
+- **Re-signing on thumbnail changes.** The ad-hoc `codesign` step is a `POST_BUILD` command that explicitly copies the thumbnails before signing and verifies the finished bundle. Automatic CMake bundle resource copies can run after `POST_BUILD` with some generators, leaving thumbnails outside the resource seal. The command only runs when the module relinks. The thumbnails are listed as `LINK_DEPENDS` so a thumbnail-only change still relinks and re-signs. Without that, the bundle fails `codesign -v` with "a sealed resource is missing or invalid".
 
 ## Host-process lifecycle: the non-obvious part
 
-Two serious bugs lived here, both fixed and live-verified. The full design
-rationale is in `TerminalRainView.mm`'s comments; trust those over this
-summary.
+Two serious bugs lived here, both fixed and live-verified. The full design rationale is in `TerminalRainView.mm`'s comments; trust those over this summary.
 
-1. **SDL blocked the idle trigger.** `SDL_Init` defaults to holding a
-   "prevent screensaver" power assertion, which is self-defeating when this
-   process *is* the screensaver. Fixed with `SDL_SetHint(
-   SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1")` before `SDL_Init`; verify with
-   `pmset -g assertions` if it ever regresses.
-2. **The host never stops the saver.** On macOS 26 (first seen on 26.5,
-   still true on 26.6.2), the host process is torn away at dismissal
-   *without* delivering `-stopAnimation`, leaving the appex animating
-   invisibly forever (observed: 6+ hours at 100%+ CPU, 673 MB GPU-backed
-   footprint). The appex receives lifecycle *and input* over a
-   ViewBridge/XPC connection from its host, so once the host dies no event
-   can ever reach it. Neither `NSResponder` overrides nor `SDL_PollEvent`
-   can work (both were tried; don't re-attempt). The fix polls the global
-   HID idle time (`CGEventSourceSecondsSinceLastEventType`) each frame and
-   `exit(0)`s the whole process once user input is seen that a healthy host
-   would have acted on (~2s window, retroactive so lock-flag lag can't hide
-   a single input blip, suspended while the screen is locked), with a
-   4-hour watchdog as backstop. Note: PPID is *not* an orphan signal; a
-   healthy appex is spawned by launchd and has PPID 1 from birth.
+1. **SDL blocked the idle trigger.** `SDL_Init` defaults to holding a "prevent screensaver" power assertion, which is self-defeating when this process *is* the screensaver. Fixed with `SDL_SetHint( SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1")` before `SDL_Init`; verify with `pmset -g assertions` if it ever regresses.
+2. **The host never stops the saver.** On macOS 26 (first seen on 26.5, still true on 26.6.2), the host process is torn away at dismissal *without* delivering `-stopAnimation`, leaving the appex animating invisibly forever (observed: 6+ hours at 100%+ CPU, 673 MB GPU-backed footprint). The appex receives lifecycle *and input* over a ViewBridge/XPC connection from its host, so once the host dies no event can ever reach it. Neither `NSResponder` overrides nor `SDL_PollEvent` can work (both were tried; don't re-attempt). The fix polls the global HID idle time (`CGEventSourceSecondsSinceLastEventType`) each frame and `exit(0)`s the whole process once user input is seen that a healthy host would have acted on (~2s window, retroactive so lock-flag lag can't hide a single input blip, suspended while the screen is locked), with a 4-hour watchdog as backstop. Note: PPID is *not* an orphan signal; a healthy appex is spawned by launchd and has PPID 1 from birth.
 
 Debugging aids:
 
-- `os_log` subsystem `com.mccannex.terminal-rain` logs start/stop/termination
-  plus a ~10s heartbeat (frame count, HID idle, lock state). Watch with
-  `/usr/bin/log stream --predicate 'subsystem == "com.mccannex.terminal-rain"'`.
-  The full path matters in zsh, whose `log` *builtin* shadows the CLI.
-- Start the real fullscreen saver with `open -a
-  /System/Library/CoreServices/ScreenSaverEngine.app`. Any real input
-  dismisses the engine and strands the appex, which must self-terminate ~2s
-  later. **Synthetic input can't dismiss it.** On the development Mac the
-  session locks as soon as the engine starts (`locked=1` from the first
-  frame), and a `CGEventPost` mouse move resets the HID idle time but the
-  engine ignores it. Automated timing and rendering tests cover the
-  confirmation state machine and rendering setup, but not actual
-  legacyScreenSaver process death; dismissal itself needs a person to move the
-  mouse or press a key. Run launch and verification as a single
-  command, since approving any later step is itself input.
-- Always verify process death directly (`ps aux | grep legacyScreenSaver`,
-  CPU sampling, `sample <pid>` for stacks), never from visuals alone.
+- `os_log` subsystem `com.mccannex.terminal-rain` logs start/stop/termination plus a ~10s heartbeat (frame count, HID idle, lock state). Watch with `/usr/bin/log stream --predicate 'subsystem == "com.mccannex.terminal-rain"'`. The full path matters in zsh, whose `log` *builtin* shadows the CLI.
+- Start the real fullscreen saver with `open -a /System/Library/CoreServices/ScreenSaverEngine.app`. Any real input dismisses the engine and strands the appex, which must self-terminate ~2s later. **Synthetic input can't dismiss it.** On the development Mac the session locks as soon as the engine starts (`locked=1` from the first frame), and a `CGEventPost` mouse move resets the HID idle time but the engine ignores it. Automated timing and rendering tests cover the confirmation state machine and rendering setup, but not actual legacyScreenSaver process death; dismissal itself needs a person to move the mouse or press a key. Run launch and verification as a single command, since approving any later step is itself input.
+- Always verify process death directly (`ps aux | grep legacyScreenSaver`, CPU sampling, `sample <pid>` for stacks), never from visuals alone.
 
 ## Build, install, test
 
@@ -138,96 +48,39 @@ cmake --build build --target terminal_rain_saver
 rm -rf ~/Library/Screen\ Savers/Terminal\ Rain.saver && cp -R "build/Terminal Rain.saver" ~/Library/Screen\ Savers/
 ```
 
-The bundle is ad-hoc signed as a `POST_BUILD` step, which is enough for
-locally built bundles (no quarantine attribute). `~/Library/Screen Savers` is
-auto-scanned by System Settings' Screen Saver picker.
+The bundle is ad-hoc signed as a `POST_BUILD` step, which is enough for locally built bundles (no quarantine attribute). `~/Library/Screen Savers` is auto-scanned by System Settings' Screen Saver picker.
 
-Measured on the development Mac (one 1440x900 display): 2.5 to 5% of one CPU
-core, a steady 44 MB footprint for the whole host process (about half GPU
-buffers), 20 fps.
+Measured on the development Mac (one 1440x900 display): 2.5 to 5% of one CPU core, a steady 44 MB footprint for the whole host process (about half GPU buffers), 20 fps.
 
 ## Distribution: no notarization (decided)
 
-Release artifacts are bare `.saver` zips; the documented install is the
-`curl`-based snippet in `.github/RELEASE_NOTES.md`. The reasoning, all
-confirmed live:
+Release artifacts are bare `.saver` zips; the documented install is the `curl`-based snippet in `.github/RELEASE_NOTES.md`. The reasoning, all confirmed live:
 
-- Browser downloads get `com.apple.quarantine`, and Gatekeeper hard-refuses
-  quarantined ad-hoc-signed bundles with a misleading "is damaged" error.
-  The real fix is a paid Developer ID plus notarization, **explicitly
-  rejected** ($99/year).
-- `curl` never sets the quarantine attribute (only browsers do), so the
-  snippet sidesteps Gatekeeper entirely. A helper `.command` script shipped
-  in the zip does *not* work, because it arrives quarantined itself.
-- The snippet is wrapped in `bash <<'INSTALL_TERMINAL_RAIN' ...` because
-  interactive zsh has `interactivecomments` off by default: pasted `#`
-  comment lines are parsed as commands and break. Test paste flows with
-  `zsh -i -s < paste.txt`, not by running a script file, which takes a
-  different code path.
+- Browser downloads get `com.apple.quarantine`, and Gatekeeper hard-refuses quarantined ad-hoc-signed bundles with a misleading "is damaged" error. The real fix is a paid Developer ID plus notarization, **explicitly rejected** ($99/year).
+- `curl` never sets the quarantine attribute (only browsers do), so the snippet sidesteps Gatekeeper entirely. A helper `.command` script shipped in the zip does *not* work, because it arrives quarantined itself.
+- The snippet is wrapped in `bash <<'INSTALL_TERMINAL_RAIN' ...` because interactive zsh has `interactivecomments` off by default: pasted `#` comment lines are parsed as commands and break. Test paste flows with `zsh -i -s < paste.txt`, not by running a script file, which takes a different code path.
 
 ## Known limitations
 
-- **~2s of invisible animation after every dismissal** before the appex
-  self-terminates. Inherent to the lifecycle fix above, by design.
-- **The Settings pane's large preview restarts on input.** System Settings
-  hosts it with `isPreview=NO`, so the zombie check treats it like a real
-  activation: ~2s after any input it `exit(0)`s, and Settings respawns it
-  within ~1s. Accepted (2026-10-05): the preview keeps animating, and
-  while the real saver runs, any input dismisses that too, so killing a
-  shared host process loses nothing.
+- **~2s of invisible animation after every dismissal** before the appex self-terminates. Inherent to the lifecycle fix above, by design.
+- **The Settings pane's large preview restarts on input.** System Settings hosts it with `isPreview=NO`, so the zombie check treats it like a real activation: ~2s after any input it `exit(0)`s, and Settings respawns it within ~1s. Accepted (2026-10-05): the preview keeps animating, and while the real saver runs, any input dismisses that too, so killing a shared host process loses nothing.
 
 ## Native validation baseline
 
-The corrected universal and arm64 builds passed all five Mac CTest suites,
-native Metal rendering/reset checks, and bundle/package signatures on
-2026-10-22. Real Settings/fullscreen coexistence, physical dismissal, automatic
-idle activation, display-off, healthy host stopAnimation, system idle sleep and
-wake/unlock passed on the M1 built-in display. See `docs/fullscreen_ownership.md`.
-These checks predate the new density scheduler and v1.1.1 metadata; follow
-`docs/release_handoff.md` to validate the current branch on this Mac.
+The corrected universal and arm64 builds passed all five Mac CTest suites, native Metal rendering/reset checks, and bundle/package signatures on 2026-10-22. Real Settings/fullscreen coexistence, physical dismissal, automatic idle activation, display-off, healthy host stopAnimation, system idle sleep and wake/unlock passed on the M1 built-in display. See `docs/fullscreen_ownership.md`. These checks predate the new density scheduler and v1.1.1 metadata; follow `docs/release_handoff.md` to validate the current branch on this Mac.
 
-Multiple physical Mac displays, Intel execution, actual GPU resource loss, and
-Mac view failure injection remain untested. Grace-only dismissal is deliberately
-ignored because the available input signal cannot distinguish it from hot-corner
-activation. Do not infer continued animation from a resident host process alone.
+Multiple physical Mac displays, Intel execution, actual GPU resource loss, and Mac view failure injection remain untested. Grace-only dismissal is deliberately ignored because the available input signal cannot distinguish it from hot-corner activation. Do not infer continued animation from a resident host process alone.
 
 ## Color baseline
 
-The palette is encoded sRGB. `metal_color_space.h` tags the Metal presentation
-layer after renderer creation; it leaves the pixel format and HDR/EDR mode alone.
-A real-host A/B capture confirmed that explicit tagging reduces the extra
-saturation seen in the default screensaver host on the M1 Air. Ordinary-window
-captures did not reproduce that difference. Native color regression tests check
-the tag and unchanged palette readback. See `docs/color_rendering.md` for the
-cross-platform source inspection and remaining display-management limits.
+The palette is encoded sRGB. `metal_color_space.h` tags the Metal presentation layer after renderer creation; it leaves the pixel format and HDR/EDR mode alone. A real-host A/B capture confirmed that explicit tagging reduces the extra saturation seen in the default screensaver host on the M1 Air. Ordinary-window captures did not reproduce that difference. Native color regression tests check the tag and unchanged palette readback. See `docs/color_rendering.md` for the cross-platform source inspection and remaining display-management limits.
 
 ## Fullscreen ownership: macOS guard removed (2026-10-22)
 
-The Linux-origin branch introduced per-display file leases for macOS. Native
-arm64 and universal builds, lease tests, rendering tests and signatures passed,
-but interactive validation exposed a black-screen regression when launching
-fullscreen with System Settings' preview open. ViewBridge reports that preview
-as `isPreview=NO` with display-sized bounds and window frame. The second,
-legitimate view was rejected by the lease. Geometry cannot distinguish these
-roles, so the user approved removing the macOS guard. Linux/Windows retain
-their duplicate-launch protection.
+The Linux-origin branch introduced per-display file leases for macOS. Native arm64 and universal builds, lease tests, rendering tests and signatures passed, but interactive validation exposed a black-screen regression when launching fullscreen with System Settings' preview open. ViewBridge reports that preview as `isPreview=NO` with display-sized bounds and window frame. The second, legitimate view was rejected by the lease. Geometry cannot distinguish these roles, so the user approved removing the macOS guard. Linux/Windows retain their duplicate-launch protection.
 
-The Mac view uses its established host lifecycle behavior and zombie cleanup.
-Do not reintroduce per-view display leases based on isPreview or dimensions.
-A future Mac duplicate guard needs a reliable presentation identity and real
-Settings-preview/fullscreen coexistence checks. See docs/fullscreen_ownership.md
-for reproduction, validation and remaining hardware limits.
+The Mac view uses its established host lifecycle behavior and zombie cleanup. Do not reintroduce per-view display leases based on isPreview or dimensions. A future Mac duplicate guard needs a reliable presentation identity and real Settings-preview/fullscreen coexistence checks. See docs/fullscreen_ownership.md for reproduction, validation and remaining hardware limits.
 
-The corrected arm64 and universal Release builds passed all five Mac CTest
-suites (including the new actual-bundle `views_macos` coexistence/stop/restart
-regression), native Metal rendering/reset checks, and bundle/package signatures.
-The user confirmed normal real-host fullscreen animation and dismissal with
-Settings open and a second launch request. Multiple physical displays and Intel
-hardware remain untested.
+The corrected arm64 and universal Release builds passed all five Mac CTest suites (including the new actual-bundle `views_macos` coexistence/stop/restart regression), native Metal rendering/reset checks, and bundle/package signatures. The user confirmed normal real-host fullscreen animation and dismissal with Settings open and a second launch request. Multiple physical displays and Intel hardware remain untested.
 
-On the same date, actual one-minute idle activation, two-minute battery
-display-off, system idle sleep, and physical wake/unlock passed with user visual
-confirmation. The real host delivered stopAnimation when the display turned off.
-All original timeouts were restored and read back (saver 300 seconds, battery
-display 5 minutes, AC display 60 minutes). See the ownership validation notes
-for exact timing and the initial AC-versus-battery test limitation.
+On the same date, actual one-minute idle activation, two-minute battery display-off, system idle sleep, and physical wake/unlock passed with user visual confirmation. The real host delivered stopAnimation when the display turned off. All original timeouts were restored and read back (saver 300 seconds, battery display 5 minutes, AC display 60 minutes). See the ownership validation notes for exact timing and the initial AC-versus-battery test limitation.

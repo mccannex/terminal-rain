@@ -1,14 +1,8 @@
-See the [changelog](https://github.com/mccannex/terminal-rain/blob/main/CHANGELOG.md)
-for release history, or download `CHANGELOG.md` from the assets below.
+See the [changelog](https://github.com/mccannex/terminal-rain/blob/main/CHANGELOG.md) for release history, or download `CHANGELOG.md` from the assets below.
 
 ## License documents
 
-Download `Terminal.Rain-Licenses.zip` alongside your platform's executable or
-screensaver bundle. It contains the MIT license for original project contributions
-and the preserved third-party notices and license texts. Extract it and keep
-those documents with redistributed copies. The inherited simulation, SDL2 and
-font retain their respective terms; see
-[third-party notices](https://github.com/mccannex/terminal-rain/blob/main/THIRD_PARTY_NOTICES.md).
+Download `Terminal.Rain-Licenses.zip` alongside your platform's executable or screensaver bundle. It contains the MIT license for original project contributions and the preserved third-party notices and license texts. Extract it and keep those documents with redistributed copies. The inherited simulation, SDL2 and font retain their respective terms; see [third-party notices](https://github.com/mccannex/terminal-rain/blob/main/THIRD_PARTY_NOTICES.md).
 
 ## Installing
 
@@ -20,8 +14,7 @@ font retain their respective terms; see
 
 ### macOS 26 or later
 
-> **Use Terminal to install.** Downloading the ZIP through a browser adds a quarantine flag. Because this screensaver isn't notarized by Apple, Gatekeeper blocks it with a "damaged" or verification error. The script below downloads it with `curl`, which avoids that flag.
-> Read the script comments in the following code block to understand what it's doing and why this is safe.
+> **Use Terminal to install.** Downloading the ZIP through a browser adds a quarantine flag. Because this screensaver isn't notarized by Apple, Gatekeeper blocks it with a "damaged" or verification error. The script below downloads it with `curl`, which avoids that flag. Read the script comments in the following code block to understand what it's doing and why this is safe.
 
 The bundle supports Apple Silicon and Intel. Intel hardware remains untested.
 
