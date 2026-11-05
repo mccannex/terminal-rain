@@ -50,7 +50,7 @@ exec /usr/bin/codesign "$@"
     assert not (target / 'obsolete-resource').exists()
     verify()
     executable = target / 'Contents/MacOS/Terminal Rain'
-    marker = target / 'rollback-marker'
+    marker = target / 'Contents/Resources/rollback-marker'
     marker.write_text('previous installation')
     subprocess.run(['/usr/bin/codesign', '--force', '--deep', '--sign', '-', str(target)], check=True)
     previous = executable.read_bytes()
