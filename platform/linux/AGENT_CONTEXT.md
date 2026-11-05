@@ -2,9 +2,9 @@
 
 ## v1.1.1 handoff
 
-See `docs/release_handoff.md` for current branch status and the remaining
-Linux/macOS native checks. Windows density validation is complete; earlier
-cross-platform CI predates that density change.
+Read `docs/release_handoff.md` first for the current source, completed
+Windows/Mac validation, green cross-platform CI and the Linux continuation
+checklist. Linux native density/integration validation is the next release step.
 
 For any coding agent working on this repo from the Fedora/KDE Plasma
 machine. Tracked in git so it travels between machines and sessions; update

@@ -6,7 +6,7 @@ Windows reserves fullscreen `/s` mode in the login session; Windows `/p` and
 `/c` do not acquire fullscreen ownership. The initial macOS per-view lease was
 removed after real-host testing exposed a black fullscreen presentation when
 Settings' preview was open. macOS retains its existing host lifecycle cleanup.
-Historical macOS lease design/testing below describes that rejected approach.
+The historical regression below explains why that approach must not return.
 
 POSIX builds use nonblocking `flock` on separate file descriptors. Windows uses a
 session-local named mutex with a zero-timeout wait and accepts abandoned mutexes.
@@ -56,9 +56,11 @@ automatic idle/display-off/wake checks were completed on 2026-11-04. Those
 ownership results predate the density change; Windows subsequently passed its
 build/tests and visual density validation as recorded in `docs/stream_density.md`.
 
-For current v1.1.1 Linux/macOS density work and final CI, use
-`docs/release_handoff.md`. Intel Mac hardware, multiple Mac displays, real X11,
-and actual GPU loss remain untested; none is claimed by the existing results.
+Current-source Mac density/coexistence checks and cross-platform CI passed on
+2026-11-05. Linux native density/integration checks are next; use
+`docs/release_handoff.md` as the current checklist. Intel Mac hardware, multiple
+Mac displays, real X11 and actual GPU loss remain untested; none is claimed by
+the existing results.
 
 ## Incident investigation boundaries
 
@@ -104,7 +106,7 @@ detached processes were observed by disappearance, not captured exit codes.
 Because audio state and window visibility changed together, this test does not
 isolate which affected idle activation. The original multi-instance incident and
 SDL display-cleanup crash were not reproduced. The one-minute AC test setting
-must be restored to the user's preferred value after idle testing.
+was temporary; the later preferred restoration value is recorded below.
 
 ## Observed display sleep/wake, 2026-10-19
 
@@ -138,65 +140,21 @@ This single successful normal-use suspend/resume test increases confidence in
 the guarded build but does not establish the root cause or fix of the older
 SDL 2.30.9 display-lookup cleanup crash. Physical monitor disconnection remains
 untested by agreement because it is exceedingly rare in the user's workflow.
-Restore AC saver activation to the user's preferred 300 seconds after testing;
-AC display-off is already back at the original 1800 seconds.
+The handoff called for restoring AC saver activation to the user's preferred
+300 seconds; AC display-off was back at the original 1800 seconds. Inspect
+current values before the next test rather than treating this history as readback.
 
-## macOS build and automated validation, 2026-10-22
+## Historical macOS lease regression, resolved 2026-10-22
 
-Checked branch `codex/prevent-duplicate-fullscreen` at `373b7f1` on the
-M1 MacBook Air running macOS 26.6.2 with AppleClang 21.0.0. Native arm64
-and universal (`arm64;x86_64`) Release builds passed with tests and the
-optional capture tool enabled. Both builds passed all four macOS CTest
-suites: `fullscreen_lease`, `zombie_confirmation`, `rendering`, and
-`color_macos`. Both also passed the separate rendering executable's
-`--native` checks using Metal, including readback and synthetic resets.
-
-The native graphics checks require desktop access: the sandbox-only attempt
-could not enumerate displays; rerunning with desktop access passed. Both
-bundles passed strict deep signature verification. The universal bundle
-contains both architectures and also passed verification after the release
-workflow's ditto ZIP/extraction round trip. SDL emitted existing deprecation
-and extension warnings; no project source changes were needed.
-
-These runs execute the arm64 slice. Intel hardware, actual ViewBridge host
-lease behavior, shared host temporary-directory access, duplicate-view
-visibility, preview/fullscreen coexistence, monitor migration, and real
-host stop/start remain unverified. No installed saver or system settings
-were changed during this validation. The build/test checks are ready for
-the next interactive macOS host validation step.
-
-## macOS real-host regression found, 2026-10-22
-
-The verified universal bundle was backed up/installed locally for interactive
-testing. The first launch reused the previous build's existing host despite
-SIGTERM, so that run is not evidence for the new ownership code. After the
-old host exited, PID 15905 loaded the new 3,848,800-byte universal executable
-and held `display-1.lock` in the legacyScreenSaver container temporary
-directory. The user confirmed normal fullscreen animation and dismissal;
-the host logged cleanup and disappeared after unlock.
-
-With the System Settings preview open, the host reused one view and created
-a second display-sized view in PID 16187. The second was rejected as busy
-and the user observed a black fullscreen presentation. This is a release
-blocking regression. A diagnostic build then established that the embedded
-Settings preview has `isPreview=NO`, bounds and window frame 1440x900,
-matching NSScreen.frame, in an NSServiceViewControllerWindow. Its level was
--2147483625 and XPC_SERVICE_NAME was
-`com.apple.ScreenSaver.Engine.legacyScreenSaver`. The size-based test cannot
-distinguish this preview from a legitimate fullscreen view.
-
-A local hidden-window bundle harness passed same-process duplicate rejection,
-true-preview and smaller-canvas coexistence, stop/restart, and resize-to-fullscreen
-lease acquisition. Those checks did not model Apple's full-size ViewBridge
-preview and therefore did not predict the observed regression. A subsequent
-experimental cross-process harness check was invalid: passing a directory to
-the harness did not change NSTemporaryDirectory used by the bundle. It is
-not evidence for or against cross-host exclusion.
-
-The previous installed saver is preserved under
-`build/macos-host-validation/Terminal Rain.previous.saver`. Test logs and
-the diagnostic harness are in the same ignored build directory. The original
-five-minute saver activation setting was not changed.
+The initial per-display lease passed arm64/universal builds, signatures and
+synthetic checks, but failed real Settings-preview/fullscreen coexistence:
+a legitimate second view was rejected and fullscreen went black. ViewBridge
+reports the embedded Settings preview as `isPreview=NO` with display-sized
+1440x900 bounds and window frame. Geometry cannot distinguish the roles.
+The user approved removing the Mac lease; the corrected behavior is below.
+Earlier harness tests did not model Apple's full-size ViewBridge preview and
+are not evidence for safe Mac duplicate exclusion. A reliable presentation
+identity would be needed before attempting such a guard again.
 
 ## Corrected macOS implementation, 2026-10-22
 
@@ -258,9 +216,9 @@ display power, sleep/wake and dismissal checks are complete. Multiple physical
 Mac displays, Intel hardware, and actual GPU resource loss remain untested.
 No macOS duplicate-prevention claim is made: that new guard was deliberately
 removed; Linux/Windows retain it. Subsequent Windows validation is recorded
-below. Native Linux/macOS checks of the newer density scheduler are tracked in
-`docs/release_handoff.md`. Mac multi-monitor checks remain deferred because no
-external display is available on this Mac.
+below. Current-source Mac density checks subsequently passed on 2026-11-05;
+Linux density validation is next in `docs/release_handoff.md`. Mac multi-monitor
+checks remain deferred because no external display is available on this Mac.
 
 ## Windows release validation, 2026-11-04
 

@@ -1,63 +1,92 @@
 # v1.1.1 release handoff
 
-Branch: `codex/prevent-duplicate-fullscreen`. Release metadata and notes target
-v1.1.1. No tag or release has been created for these changes.
+## Start here
 
-## Completed on Windows, 2026-11-04
+Continue on `codex/prevent-duplicate-fullscreen`. The validated runtime source is
+`d5ad85d` (stream-density scheduler and v1.1.1 metadata); later documentation-only
+commits do not change those binaries. Windows and Mac validation is complete
+within the limits below. **Linux native validation is the next step.** No v1.1.1
+tag or release has been created. Do not publish before the user finishes Linux
+validation and authorizes release.
 
-- Clean MinGW Release build and all four CTest suites passed, including native
-  Direct3D 11, ownership, failure/reset handling, and fractional spawn rates.
-- The user approved fullscreen density across monitors and normal dismissal.
-  A direct launch subsequently reconfirmed all four displays and exited zero.
-- Before the density change, the MSVC CI artifact passed settings-thumbnail,
-  process coexistence, duplicate rejection, and automatic idle/display-off/wake
-  checks. The original 300-second saver and 3,600-second AC display timeouts
-  were restored and independently read back; DC display-off remained 300 seconds.
-- The approved density binary is now selected as the local saver at
-  `build-installed-windows/Terminal Rain.scr`, alongside `libgcc_s_seh-1.dll`,
-  `libstdc++-6.dll`, and `libwinpthread-1.dll`. This local MinGW installation is
-  separate from the public MSVC CI artifact and loads without the compiler PATH.
+## Linux continuation checklist
 
-Detailed evidence: `docs/stream_density.md` and `docs/fullscreen_ownership.md`.
+1. Fetch the branch and fast-forward the checkout after checking for local changes.
+   Read `platform/linux/AGENT_CONTEXT.md` for the Fedora dependencies, native
+   Wayland/HiDPI design and existing powerdevil integration.
+2. Build/test the current source, using the directory the idle wrapper launches:
 
-## Remaining on Linux
+   ```sh
+   cmake -S . -B build/linux -DCMAKE_BUILD_TYPE=Release -DTERMINAL_RAIN_BUILD_TESTS=ON
+   cmake --build build/linux -j$(nproc)
+   ctest --test-dir build/linux --output-on-failure
+   ```
 
-Build the current branch as Release with `TERMINAL_RAIN_BUILD_TESTS=ON`, run
-CTest (including `fullscreen_launch` when Python is available), then compare
-density on the real mixed-resolution/HiDPI Wayland displays. Verify coverage,
-normal dismissal, duplicate rejection/relaunch, and the configured KDE idle
-integration. Preserve and restore any temporary power settings.
+   Expect `fullscreen_lease`, `fullscreen_launch`, `rendering`, and
+   `zombie_confirmation`. If `fullscreen_launch` is absent, install Python 3
+   and reconfigure before rerunning CTest.
+3. Inspect `~/.local/bin/terminal-rain-screensaver.sh` and the active KDE profile;
+   confirm the wrapper points to the rebuilt binary rather than a stale build.
+   Check for an existing saver before launching. Never unlink a live lease file.
+4. With the user present and ready, compare density on all four mixed-resolution/
+   HiDPI Wayland displays. Ask for visual confirmation of glyph sizing, density,
+   full coverage (including panels), and physical-input dismissal. While the first
+   launch is visible, verify a duplicate exits zero without changing coverage;
+   then verify normal relaunch after dismissal. Capture PIDs and exit status.
+5. Verify actual KDE idle activation and display-off/physical wake with the rebuilt
+   binary. Snapshot the active power profile and effective settings before any
+   temporary changes; restore and independently read them back afterward. Prior
+   preferences were 300-second AC saver activation and 1,800-second AC display-off;
+   inspect current settings rather than assuming they are unchanged. Distinguish
+   display power-off from system suspend/resume. Prior suspend/resume passed;
+   repeat if relevant to observed behavior, without claiming it from display wake.
+6. Record the exact source/build, user observations, process cleanup and restored
+   settings here. If runtime source changes, rerun affected native checks and
+   cross-platform CI before tagging.
 
-## Remaining on macOS
+The earlier Linux four-display, duplicate/idle/display-power and suspend results
+are a baseline from 2026-10-19, before the density change. They do not validate the
+new scheduler's appearance. Details and the separate unresolved SDL display-lookup
+cleanup crash are in `docs/fullscreen_ownership.md`.
 
-Build Release arm64 and universal (`arm64;x86_64`) bundles with tests enabled.
-Run all five CTest suites in a desktop session, plus
-`terminal_rain_rendering_tests --native`. Verify the bundle signature and the
-release workflow's ditto ZIP/extraction signature round trip.
+## Completed validation
 
-Install and visually check the new density in the real host, including Retina
-sizing, Settings/fullscreen coexistence, and normal dismissal/cleanup. The Mac
-view now derives its unchanged 50-ms cadence from the shared scheduler constant.
-Do not restore the rejected per-view fullscreen lease: ViewBridge Settings
-previews can have full-display bounds and `isPreview=NO`.
+- **Windows, 2026-11-04:** clean MinGW Release build; all four suites including
+  native Direct3D 11; user-approved density, four-display coverage and dismissal.
+  The approved local build remains selected under `build-installed-windows`
+  with its three MinGW runtime DLLs. Earlier MSVC artifact checks covered settings
+  preview, duplicate rejection/coexistence and actual idle/display-off/wake.
+  Saver/AC display timeouts were restored to 300/3,600 seconds; DC stayed 300.
+  See `docs/stream_density.md` and `platform/windows/AGENT_CONTEXT.md`.
+- **Mac, 2026-11-05:** Release arm64 and universal builds; all five suites on both
+  builds; separate native Metal rendering/readback/reset tests; strict/deep
+  signatures and ditto ZIP/extraction round trip. The downloaded Mac CI bundle
+  also passed the native view lifecycle test. Both slices target macOS 26.0 and
+  report 1.1.1. The verified CI bundle remains installed, with the previous 1.1.0
+  backed up under `build/macos-validation-2026-11-05/` on the Mac.
+  The user approved real fullscreen density, sharp glyphs, built-in 1440x900
+  coverage and dismissal, plus Settings-preview/fullscreen coexistence and
+  preview recovery. Logs confirmed 20 fps and input-confirmed host termination;
+  the standalone run left no engine/saver process. With Settings open, its shared
+  host terminated after dismissal and Settings respawned the preview normally.
+  Continued-input preview restarts are accepted behavior. Mac power settings
+  were unchanged. Automatic idle/display-off/sleep was last checked 2026-10-22.
+- **Current-source CI, 2026-11-05:** [run 42083438520](https://github.com/mccannex/terminal-rain/actions/runs/42083438520)
+  passed Windows, Linux and Mac build/test/package jobs for `d5ad85d`.
+  All uploaded artifacts were downloaded and inspected on the Mac; Windows/Linux
+  executables were not run there. CI excludes native graphics tests. Manual
+  dispatch created artifacts only; the release job was skipped.
 
-## Final release steps
+## Release boundary and known limits
 
-After the final source is available remotely, rerun `release.yml` on this branch
-and check all three platform artifacts. The successful run
-https://github.com/mccannex/terminal-rain/actions/runs/41930548026 tested
-`2045168`, before the density and v1.1.1 metadata edits. It does not validate
-the final source. Tag/create the draft only after the remaining native checks;
-publishing is still a separate user action.
+After Linux native checks pass, review results with the user, then tag/create the
+v1.1.1 draft when authorized. Publishing remains a separate user action. The
+workflow and `.github/RELEASE_NOTES.md` already target v1.1.1. Current-source CI
+above supersedes older pre-density runs; rerun if release source changes.
 
-## Windows launch pitfall
-
-The Windows `.scr` shell association is `"%1" /S`. PowerShell `Start-Process`
-using shell execution can therefore launch fullscreen even when a caller
-supplies `/a`, `/p`, or `/c`. A hidden-window startup flag can hide the first
-display window while other display windows remain visible. This caused a
-three-screen diagnostic run; a direct normal-visibility launch covered all four.
-
-For argument-specific tests, use `ProcessStartInfo.UseShellExecute = false`
-with explicit arguments. Do not request hidden startup for a visual fullscreen
-test. The source `.exe` is also suitable for argument-specific diagnostics.
+Real X11, Intel Mac execution, multiple physical Mac displays and actual GPU
+resource loss remain untested. Do not add a Mac per-view fullscreen lease:
+ViewBridge Settings previews can be display-sized with `isPreview=NO`; that
+approach caused black fullscreen output and was removed. Duplicate protection
+is intentionally limited to Windows/Linux. Keep the separate SDL cleanup crash
+and unproven accumulation hypothesis distinct from the lease fix.

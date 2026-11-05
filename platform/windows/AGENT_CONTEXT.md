@@ -2,9 +2,9 @@
 
 ## v1.1.1 handoff
 
-See `docs/release_handoff.md` for current branch status and the remaining
-Linux/macOS native checks. Windows density validation is complete; earlier
-cross-platform CI predates that density change.
+Read `docs/release_handoff.md` first for the current source, completed
+Windows/Mac validation, green cross-platform CI and the Linux continuation
+checklist. Linux native density/integration validation is the next release step.
 
 Maintenance reference for the Windows target. See the root README for the
 project overview and the Linux/macOS context files for their integrations.
@@ -33,8 +33,8 @@ name from the filename.
 For argument-specific process tests, bypass the `.scr` shell association with
 `ProcessStartInfo.UseShellExecute = false`; that association forces `/S`.
 Use normal window visibility for a fullscreen visual test. Hidden startup can
-hide the first display's window while the other three remain visible. See
-`docs/release_handoff.md` for the observed diagnostic pitfall.
+hide the first display's window while the other three remain visible. A direct
+normal-visibility launch resolved that diagnostic artifact on the test machine.
 
 ## Screensaver integration
 

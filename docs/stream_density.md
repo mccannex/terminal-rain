@@ -66,5 +66,7 @@ forced `/S` and hidden the first window, showing only three displays. Direct
 execution with normal visibility resolved that launcher artifact; see
 `docs/release_handoff.md` for the required diagnostic launch method.
 
-The earlier cross-platform CI run precedes this density change. Updated
-cross-platform CI and native Linux/macOS density checks remain release work.
+On 2026-11-05, cross-platform CI run `42083438520` passed for density source
+`d5ad85d`. Mac arm64/universal automated checks and user-confirmed real fullscreen
+density, dismissal/cleanup and Settings coexistence also passed. Linux native
+density/integration validation remains; use `docs/release_handoff.md`.

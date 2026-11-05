@@ -2,9 +2,26 @@
 
 ## v1.1.1 handoff
 
-See `docs/release_handoff.md` for current branch status and the remaining
-Linux/macOS native checks. Windows density validation is complete; earlier
-cross-platform CI predates that density change.
+Read `docs/release_handoff.md` first for the current source, completed
+Windows/Mac validation, green cross-platform CI and the Linux continuation
+checklist. Linux native density/integration validation is the next release step.
+
+On 2026-11-05, source `d5ad85d` passed Release arm64/universal builds, all five
+CTest suites for each build, separate native Metal rendering/reset tests, and
+bundle signatures plus the universal ZIP/extraction signature round trip on
+macOS 26.6.2. Native graphics tests need desktop access outside the execution
+sandbox. The CI bundle is installed; the user approved real-host density, sharp
+glyphs, built-in display coverage and physical dismissal on 2026-11-05. Logs
+confirmed 20 fps and input-confirmed host termination at 11:29:57 MDT; a direct
+process check found no remaining saver/engine. Real Settings-preview/fullscreen
+coexistence also passed with user confirmation: both views animated in the same
+host, physical dismissal exited the engine, the shared host terminated at
+11:33:58 MDT, and Settings restarted its preview normally. Continued-input
+preview restarts remain the accepted lifecycle. Intel execution is untested;
+automatic idle/display-off/sleep was not repeated for the density change.
+Fresh cross-platform CI run `42083438520` passed Windows, Linux and macOS jobs
+for the same source. Its downloaded universal Mac bundle also passed signature,
+version/deployment checks and the native bundle view lifecycle test on this Mac.
 
 For any coding agent working on this repo's macOS target. Tracked in git so it
 travels between machines and sessions; update it with real status before you're
