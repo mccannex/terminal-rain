@@ -69,4 +69,9 @@ execution with normal visibility resolved that launcher artifact; see
 On 2026-11-05, cross-platform CI run `42083438520` passed for density source
 `d5ad85d`. Mac arm64/universal automated checks and user-confirmed real fullscreen
 density, dismissal/cleanup and Settings coexistence also passed. Linux native
-density/integration validation remains; use `docs/release_handoff.md`.
+Wayland/OpenGL rendering checks and user-approved four-display density,
+sharpness, panel coverage and mouse dismissal passed on 2026-11-05. Duplicate
+rejection preserved the running owner, which then exited zero. Prior KDE
+idle/display-off/wake and suspend results were carried forward after runtime
+diff review; no power settings were changed or power cycles repeated. Exact
+source, binary hash and limitations are in `docs/release_handoff.md`.

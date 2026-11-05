@@ -4,7 +4,20 @@
 
 Read `docs/release_handoff.md` first for the current source, completed
 Windows/Mac validation, green cross-platform CI and the Linux continuation
-checklist. Linux native density/integration validation is the next release step.
+checklist and final Linux results. Native density validation is complete; prior
+power-management results were carried forward after reviewing the runtime diff.
+
+On 2026-11-05, checkout `d3be66d` (runtime `d5ad85d`) was rebuilt as Release
+in `build/linux` with tests enabled; all four expected suites passed. The idle
+wrapper points at this build. Saved AC delays remain 300 seconds for the script
+and 1,800 seconds for display-off; no settings were changed. Native Wayland/OpenGL
+rendering checks passed, and the user approved density, glyph sharpness,
+four-display/panel coverage and mouse dismissal. A visible duplicate exited zero
+without disrupting the owner; the owner then exited zero with no process left.
+KDE reports AC active. Actual idle/display-off/wake and suspend tests from October
+were carried forward after review: those paths and the 50-ms cadence are unchanged;
+only bounded stream arrivals changed. They were not repeated today. See the
+handoff for exact build, process evidence and remaining limits.
 
 For any coding agent working on this repo from the Fedora/KDE Plasma
 machine. Tracked in git so it travels between machines and sessions; update

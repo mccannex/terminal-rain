@@ -57,8 +57,11 @@ ownership results predate the density change; Windows subsequently passed its
 build/tests and visual density validation as recorded in `docs/stream_density.md`.
 
 Current-source Mac density/coexistence checks and cross-platform CI passed on
-2026-11-05. Linux native density/integration checks are next; use
-`docs/release_handoff.md` as the current checklist. Intel Mac hardware, multiple
+2026-11-05. Linux native Wayland/OpenGL checks, user-approved four-display density,
+panel coverage, dismissal and visible duplicate rejection also passed that day.
+The October Linux power-cycle results were carried forward after reviewing the
+unchanged integration/input/cleanup paths; they were not repeated. See
+`docs/release_handoff.md` for the exact evidence and release status. Intel Mac hardware, multiple
 Mac displays, real X11 and actual GPU loss remain untested; none is claimed by
 the existing results.
 

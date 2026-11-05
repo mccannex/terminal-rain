@@ -4,12 +4,12 @@
 
 Continue on `codex/prevent-duplicate-fullscreen`. The validated runtime source is
 `d5ad85d` (stream-density scheduler and v1.1.1 metadata); later documentation-only
-commits do not change those binaries. Windows and Mac validation is complete
-within the limits below. **Linux native validation is the next step.** No v1.1.1
-tag or release has been created. Do not publish before the user finishes Linux
-validation and authorizes release.
+commits do not change those binaries. Windows, Mac and Linux validation is complete
+within the limits below. The user authorized merging to main and creating the
+v1.1.1 tag/draft on 2026-11-05. Verify the generated release assets, then obtain
+the user’s final publishing approval.
 
-## Linux continuation checklist
+## Linux validation procedure (completed within the limits below)
 
 1. Fetch the branch and fast-forward the checkout after checking for local changes.
    Read `platform/linux/AGENT_CONTEXT.md` for the Fedora dependencies, native
@@ -51,6 +51,30 @@ cleanup crash are in `docs/fullscreen_ownership.md`.
 
 ## Completed validation
 
+- **Linux, 2026-11-05:** clean checkout fast-forwarded to `d3be66d`
+  (runtime source `d5ad85d`). Release rebuilt in `build/linux` with tests enabled;
+  all four expected suites passed: `fullscreen_lease`, `fullscreen_launch`,
+  `rendering`, and `zombie_confirmation`. SDL configured both Wayland and X11
+  video support. Binary SHA-256:
+  `dbbb58db03e8b1fffabe12f6b90ee94ab23fbc8d29a795ac2dcdc91b322b6ad5`.
+  The native Wayland/OpenGL rendering suite also passed accelerated drawing,
+  pixel readback, synthetic reset, failure handling and preview lifecycle checks.
+  The user approved density, sharp glyphs, all four displays including panels,
+  and physical mouse dismissal. Current layout: three 1920x1080 displays at 100%
+  and a 1920x1080 laptop panel at 125%. Owner PID 1221163 exited zero after 43.6
+  seconds without forced termination; a duplicate at ten seconds exited zero
+  with the ownership message while the original remained alive. No saver process
+  remained. Automated lease tests cover release/reacquisition; a second visible
+  relaunch was not repeated today (it passed on 2026-10-19).
+  The existing idle wrapper targets this exact build path. KDE reports AC active;
+  saved settings show 300-second script activation, 1,800-second display-off and
+  automatic suspend disabled. No power settings were changed. At the user's
+  request, review compared the current Linux runtime with the tested October
+  version: Linux startup, idle integration, input, cleanup and renderer-reset
+  paths are unchanged, and the shared frame cadence remains 50 ms. Only stream
+  arrivals change, within the existing capacity. The October actual idle,
+  display-off/wake and suspend/resume results are carried forward; those were
+  not repeated today. This does not claim the separate SDL cleanup crash is fixed.
 - **Windows, 2026-11-04:** clean MinGW Release build; all four suites including
   native Direct3D 11; user-approved density, four-display coverage and dismissal.
   The approved local build remains selected under `build-installed-windows`
@@ -79,8 +103,8 @@ cleanup crash are in `docs/fullscreen_ownership.md`.
 
 ## Release boundary and known limits
 
-After Linux native checks pass, review results with the user, then tag/create the
-v1.1.1 draft when authorized. Publishing remains a separate user action. The
+Linux results were reviewed with the user, who authorized merging and tagging
+v1.1.1 on 2026-11-05. Publishing requires final approval of the verified draft. The
 workflow and `.github/RELEASE_NOTES.md` already target v1.1.1. Current-source CI
 above supersedes older pre-density runs; rerun if release source changes.
 
