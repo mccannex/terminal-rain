@@ -50,6 +50,14 @@ In a controlled Windows 1080p Direct3D 11 benchmark, the optimization pass reduc
 
 </details>
 
+## Installation
+
+Download Terminal Rain from the [latest release](https://github.com/mccannex/terminal-rain/releases/latest). The release page includes installation and upgrade instructions for Windows, macOS, and Linux, along with the license documents.
+
+- **Windows:** Download the `.scr` screensaver and follow the installation instructions. The Microsoft Visual C++ v14 Redistributable (x64) is required.
+- **macOS 26 or later:** Use the install command on the release page. It installs or upgrades Terminal Rain for your account, with signature checks and automatic rollback if installation fails.
+- **Linux (KDE Plasma):** Download the `terminal-rain` executable, make it executable, and configure KDE's idle-script action using the linked instructions.
+
 ## Building
 
 Needs CMake 3.16 or later and a C++17 compiler. CMake downloads and builds SDL2 itself.
