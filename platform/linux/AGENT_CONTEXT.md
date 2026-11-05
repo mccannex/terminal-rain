@@ -6,6 +6,9 @@ Read `docs/release_handoff.md` first for the current source, completed
 Windows/Mac validation, green cross-platform CI and the Linux continuation
 checklist and final Linux results. Native density validation is complete; prior
 power-management results were carried forward after reviewing the runtime diff.
+The branch is merged to main; tag v1.1.1 at `53b990c` passed all release workflow
+jobs, and its draft assets were verified. Publishing awaits final user approval.
+The local idle wrapper still uses the user-approved build below.
 
 On 2026-11-05, checkout `d3be66d` (runtime `d5ad85d`) was rebuilt as Release
 in `build/linux` with tests enabled; all four expected suites passed. The idle

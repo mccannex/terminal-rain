@@ -5,9 +5,9 @@
 Continue on `codex/prevent-duplicate-fullscreen`. The validated runtime source is
 `d5ad85d` (stream-density scheduler and v1.1.1 metadata); later documentation-only
 commits do not change those binaries. Windows, Mac and Linux validation is complete
-within the limits below. The user authorized merging to main and creating the
-v1.1.1 tag/draft on 2026-11-05. Verify the generated release assets, then obtain
-the user’s final publishing approval.
+within the limits below. The feature branch was fast-forwarded into main and tag `v1.1.1` points to
+`53b990c`. The generated draft and its three assets were verified on 2026-11-05;
+final user approval to publish is the remaining release step.
 
 ## Linux validation procedure (completed within the limits below)
 
@@ -100,6 +100,32 @@ cleanup crash are in `docs/fullscreen_ownership.md`.
   All uploaded artifacts were downloaded and inspected on the Mac; Windows/Linux
   executables were not run there. CI excludes native graphics tests. Manual
   dispatch created artifacts only; the release job was skipped.
+
+## Tagged release build and draft verification, 2026-11-05
+
+[Release workflow 42088157627](https://github.com/mccannex/terminal-rain/actions/runs/42088157627)
+passed Windows, Linux, Mac and draft creation for tag `v1.1.1` at `53b990c`.
+Runtime/build/test sources match validated `d5ad85d`; later changes are docs only.
+The draft is named Terminal Rain v1.1.1, is not a prerelease, and its body matches
+`.github/RELEASE_NOTES.md`. All three assets are uploaded and were downloaded:
+
+- `terminal-rain`: x86-64 ELF; dependencies resolve on Fedora; entry-point
+  duplicate-launch suite passed against the downloaded executable. Bytes match
+  the Linux workflow artifact. SHA-256:
+  `7c0e481d702ae1e43b60842ed0137a538714d49b9a65f3e53f0290d35d9945a1`.
+- `Terminal.Rain.scr`: x86-64 Windows GUI PE; bytes match the Windows workflow
+  artifact. It was inspected, not executed on Fedora. SHA-256:
+  `e0553c9375fa044e6eea6063e4242249c88ccfe76047799bf19333a5889807da`.
+- `Terminal.Rain-macOS.zip`: ZIP integrity passed; universal two-slice executable,
+  bundle version and short version 1.1.1, signature manifest present. CI verified
+  strict/deep signing before packaging and after extraction; no macOS execution
+  was attempted on Fedora. SHA-256:
+  `0abef762eb53d7db47375d2532de38aa1ef430ee89d05d8b5b483d78346cd47b`.
+
+The Fedora idle wrapper continues to launch the locally built, user-approved
+`build/linux/terminal-rain` with hash recorded above. It was rebuilt and all four
+CTest suites passed again before tagging. No saver process was left running.
+The local checkout is main. Publishing awaits the user's final approval.
 
 ## Release boundary and known limits
 
