@@ -16,15 +16,19 @@ The Windows x64 build requires the [Microsoft Visual C++ v14 Redistributable (x6
 
 ### macOS 26 or later
 
-> **Use Terminal to install.** Downloading the ZIP through a browser adds a quarantine flag. Because this screensaver isn't notarized by Apple, Gatekeeper blocks it with a "damaged" or verification error. The script below downloads it with `curl`, which avoids that flag. Expand the installer below and review its comments before running it. It installs into your account without administrator access; its signature checks verify integrity, not Apple notarization or publisher identity.
+> **Use Terminal to install.** Downloading the ZIP through a browser adds a quarantine flag. Because this screensaver isn't notarized by Apple, Gatekeeper blocks it with a "damaged" or verification error. The installer downloads it with `curl`, which avoids that flag. Read the installer source or expand the commented script below before running it. It installs into your account without administrator access; its signature checks verify integrity, not Apple notarization or publisher identity.
 
 The bundle supports Apple Silicon and Intel. Intel hardware remains untested. The installer downloads v1.1.1, checks its signature, and replaces the existing bundle without merging files. If installation fails, it restores the previous copy; after success, it removes the temporary backup. Signature checks confirm bundle integrity, not Apple notarization. The download becomes available when this release is published.
 
 1. Close **System Settings** and dismiss any running screensaver, then open **Terminal**.
-2. Expand the installer, review it, then paste the entire block into Terminal and press Return.
+2. **[Read the installer first](https://github.com/mccannex/terminal-rain/blob/v1.1.1/tools/macos/install.sh)**, then run this command. It downloads and executes the installer pinned to v1.1.1, rather than the changing `main` branch.
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/mccannex/terminal-rain/v1.1.1/tools/macos/install.sh | bash
+   ```
 
    <details>
-   <summary>Show macOS install / upgrade script</summary>
+   <summary>Read the complete commented installer (alternative copy-and-paste block)</summary>
 
    ```bash
    bash <<'INSTALL_TERMINAL_RAIN'

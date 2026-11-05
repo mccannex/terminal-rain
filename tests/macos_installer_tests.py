@@ -60,7 +60,8 @@ class InstallerTests(unittest.TestCase):
         (self.target / 'obsolete-resource').write_text('old')
 
     def run_install(self, fault=''):
-        return subprocess.run(['bash', str(INSTALLER)], env=dict(self.env, INSTALL_FAULT=fault),
+        return subprocess.run(['bash'], input=INSTALLER.read_text(),
+                              env=dict(self.env, INSTALL_FAULT=fault),
                               capture_output=True, text=True, timeout=15)
 
     def test_fresh_install(self):
